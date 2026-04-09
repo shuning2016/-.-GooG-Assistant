@@ -1,0 +1,712 @@
+Swarm Weekly Update
+10 Apr 2026
+1
+1
+
+Overall Performance Update: Apr’26 MTD (as of 6 Apr) 5.3m total active SKUs, with EOM ADO projected to be 1.8k with -1.0 UE
+Highlights
+Seller/SKU: Total active skus at 5.3m currently, expected to land at 7.9m by EOM mainly through OSP 普源 sourcing and 妙手 SKU push. WIP to adjust ERP year end target according to latest progress and improvement actions.
+Topline: Apr EOM ADO projected to land at 1.8k (MoM +29%, RR 60%), missing target due to 1) Seller Target adjusted down by 25% (from 859 to 637), factoring in onboarding conversion rate 2) OSP SKU efficiency lower than projected 
+P&L and UE: EOM P&L projected to outperform target at -0.06M due to lower ADO than original target. UE at projected to meet target at -$1.03
+2
+1
+2
+Metric
+Sub-Metric
+Feb 26
+Mar 26
+Apr 26
+Apr 26
+Target
+RR
+MoM
+Actuals
+Actuals
+MTD
+EOM
+-
+-
+-
+Seller / SKU
+Total listed seller
+6,269
+19,047
+27,675
+34,841
+37,484
+93%
+83%
+......ERP
+241
+372
+462
+637
+859
+74%
+71%
+......OSP
+6,029
+18,675
+27,213
+34,204
+36,625
+93%
+83%
+Total active SKU#
+2.2 m
+4.5 m
+5.3 m
+7.9 m
+9.9 m
+79%
+76%
+......ERP
+0.5 m
+0.6 m
+0.7 m
+0.8 m
+2.3 m
+33%
+22%
+......OSP
+1.6 m
+3.8 m
+4.6 m
+7.1 m
+7.6 m
+93%
+85%
+Total active SKU effi
+0.18%
+0.03%
+0.03%
+0.02%
+0.03%
+76%
+-27%
+......ERP
+0.66%
+0.15%
+0.15%
+0.15%
+0.09%
+178%
+3%
+......OSP
+0.03%
+0.01%
+0.01%
+0.01%
+0.01%
+66%
+-26%
+Topline
+ADO
+2,254
+1,388
+1,449
+1,784
+2,972
+60%
+29%
+......ERP
+1,854
+942
+1,037
+1,176
+1,983
+59%
+25%
+......OSP
+399
+446
+412
+608
+989
+61%
+36%
+ABS ($)
+9.7
+14.5
+12.6
+13.3
+13.4
+99%
+-8%
+ADG ($)
+21.9K
+20.2K
+18.3K
+24K
+40k
+60%
+18%
+P&L
+Seller P&L ($)
+-0.10 M
+-0.03 M
+0.00 M
+-0.06 M
+-0.09 M
+0.04 M
+0.07 M
+UE ($)
+-1.51
+-0.68
+-0.11
+-1.03
+-1.03
+0.00
+0.83
+1
+3
+3
+Feb Actual + Mar EOM Proj
+
+Feb Actual / Feb Target / Mar EOM Proj / Mar Target / RR (EOM Proj / Mar Target)
+
+Or can put in two tables. 
+
+Date
+ADO
+Seller P&L
+Seller P&L / Gross Order
+OSP
+ERP
+Total
+OSP
+ERP
+Non-OSP
+Non-OSP
+Total
+OSP
+ERP
+Non-OSP
+Non-OSP
+Total
+Total
+Inc.
+RM
+Mature
+Total
+Total
+Inc.
+RM
+Mature
+Total
+Total
+Inc.
+RM
+Mature
+Total
+Feb'26 Full month
+399
+227
+194
+1,433
+2,253
+-21.7K
+-17.8K
+-9.1K
+-46.4K
+-95.1K
+-1.9
+-2.8
+-1.7
+-1.2
+-1.5
+Mar'26 Full month
+394
+106
+138
+698
+1,336
+-3.7K
+-12.0K
+-9.6K
+-4.0K
+-29.2K
+-0.3
+-3.7
+-2.2
+-0.2
+-0.7
+Apr'26 EOM Projection
+608
+199
+354
+626
+1,787
+0.1K
+-17.8K
+-38.4K
+0.7K
+-55.3K
+0.0
+-3.0
+-3.6
+0.0
+-1.0
+
+Key Highlights
+
+Mar’26 actual
+Seller P&L: -$29k, +$56k above target of -$85k, mainly driven by 1) price adjustment on 10 Mar; 2) lower topline
+UE: both OSP and ERP mature SKUs UE improved with price increase; OSP -$0.3 (+$1.6 vs before); ERP mature -$0.2 (+$1 vs before)
+UE not fully restored to breakeven due to price adjustment only done on 10th March
+
+Apr’26 EOM Projection
+Seller P&L: -$55k, -26k vs Mar’26, mainly driven by higher ADO in Incubation and Role Model sellers
+UE: both OSP and ERP mature SKUs projected to breakeven; ERP incub SKUs target at -$3.0 UE and Role Model at -$3.6
+
+Rest of Apr P&L focus
+Ensure seller P&L and UE on target and in control
+
+P&L/UE by SKU segment: Mar meet target vs latest management guidance after price adj. Apr EOM project UE breakeven for OSP/mature SKUs, -3.0 and -3.6 for incubation and role model SKUs 
+  1
+  2
+  1
+  2
+3
+
+Seller/SKU Update by ERP: Till date, we onboarded 462 ERP sellers with 695k SKUs, mainly contributed by 妙手. To work on 3 new ERPs leads conversion and achieve 637 sellers by EOM
+MTD seller and SKU progress:
+As of 7 April, we have 462 ERP sellers onboarded to Swarm (+90 MoM) with 695k SKUs (+9% MoM)
+Mainly contributed by 妙手 where seller/sku increased by 56 and 36k (+58%) respectively
+To work on the 3 new ERPs leads conversion for Apr, target to land at 637 sellers by EOM
+OSP achieved 27k sellers and 3.9m SKUs till date mainly from 普源 sourcing. 
+
+Onboarding efficiency improvement actions:
+ERP sellers:
+Set up online registration tool, enable sellers to submit survey, edit information, track progress, submit documents requested, get RM contact info: Under PRD, live ETA end Apr.
+Improve 双开 onboarding process: Need DC support, ETA May.
+For sellers submitted survey before ERP launched, map seller ERP account with phone/Email, and onboard seller directly: Total 167# leads from妙手/店小秘/芒果店长 were matched. Start onboarding on 4/7.
+OSP sellers:
+Implementation of automation for each onboarding step, starting from high manual effort+high waiting time processes; ETA end Apr
+4
+Seller #
+SKU #
+MTD
+M-1
+MoM
+MTD
+M-1
+MoM
+ERP
+462
+372
++90
+695k
+637k
+9%
+... 聚水潭
+222
+217
++5
+586k
+571k
+3%
+... 旺店通
+16
+16
+0
+3k
+3k
+0%
+... 妙手
+195
+139
++56
+99k
+63k
+58%
+... 快递助手
+9
+0
++9
+2k
+0k
+-%
+... 店小秘
+15
+0
++15
+6k
+0k
+-%
+... 芒果店长
+5
+0
++5
+0k
+0k
+-%
+OSP
+27,213
+18,675
++8538
+3921k
+3836k
+2%
+... OF
+5,500
+5,500
+0
+1411k
+1454k
+-3%
+... 普源
+21,713
+13,175
++8538
+2510k
+2382k
+5%
+Feb Actual + Mar EOM Proj
+
+Feb Actual / Feb Target / Mar EOM Proj / Mar Target / RR (EOM Proj / Mar Target)
+
+Or can put in two tables. 
+
+NFR Performance Update: OSP W-1 NFR at 5.85%, on track vs EoM target 3.7%. Completed clean up of 6.3K poor TB shop quality sellers, PY system ready to bring in sellers with better shop performance on TB
+Highlights
+
+Overall W-1 NFR performance improved to 3.91%, WoW -1%
+OSP improved to 5.85%, WoW -0.08%. contributed by clean up of sellers with poor shop ratings 
+PY is on track and made great progress. OF is still rely on us to clean up sellers.
+Prioritize PY as key OSP considering it’s tech capability and biz engagement level. Keep monitor PY shipping performance when order volume growth. 
+Manage OF NFR by cleaning up seller pool based on TB shipping performance rating. Backup plan is to shift performing shops to PY.
+
+5
+Actions
+Puyuan progress
+OF progress
+Clean up seller pool based on TB shop rating and shipping performance rating
+Able to get shop overall rating. Cleaned up 6.3k merchants with TB rating <4.5.
+Unable to get shop rating data. We use internal tool to crawl shop shipping performance rating, daily max crawl of 100 merchants. Priority on merchants with orders, completed cleaned up of 60 merchants.
+Block long lead time SKUs based on TB SKU ship time information
+Able to identify SKUs with ship time less than 48 hours. WIP to clean up SKUs above 48 hours. Moving forward to only bring in SKUs with TB ship time less than 48 hours.
+Unable to get SKU shipping information.
+Reduce orders been blocked by SLS  heavy/ bulky chanel (TW/BR)
+Lack of related data on TB. Both PY and OF can not identify these items.
+Short term: Unlisting of flagged out items for BR and heavy channel toggle on for TW every two days (WIP)
+Long Term: Implementation of AI decision to identify similar bulky items to unlist in advance. ETA 4/17
+OSP seller auto change purchasing account if original account is blocked.
+Closely monitor order success rate, no NFR from this issue.
+Still see failure order in early Apr, OF increased purchasing accounts.
+W_1
+3/30~4/5
+W_2
+3/23~3/29
+Overall Swarm
+3.91%
+4.91%
+Non-OSP
+3.18%
+4.53%
+OSP
+5.85%
+5.93%
+... OF
+5.34%
+5.39%
+... PY
+7.57%
+8.43%
+CNCB
+2.10%
+2.57%
+*NFR data logic updated to be in line with CN Ops calculation
+Feb Actual + Mar EOM Proj
+
+Feb Actual / Feb Target / Mar EOM Proj / Mar Target / RR (EOM Proj / Mar Target)
+
+Or can put in two tables. 
+
+SKU Group
+SKU profile
+SKU# (per Seller)
+Performing SKU Metrics (per Seller)
+CPO
+Unique
+Price
+MT SKUs
+MP SKUs
+Perf. MP SKU#
+Imp./ MP SKU
+CTR
+CR
+ADO
+SKU Effi.
+Ads
+Rebates
+Overall
+Target
+流量款
+Traffic Drivers
+No
+Yes
+50
+250
+49
+458
+3.0%
+2.2%
+15.0
+6.0%
+-$3.2
+-$1.0
+-$4.2
+高潜力款
+Growth Drivers
+Yes
+Yes
+30
+150
+8
+267
+2.4%
+6.6%
+3.5
+2.3%
+-$1.1
+$0.0
+-$1.8
+利润款
+Profit Drivers
+Yes
+No
+40
+200
+23
+325
+2.3%
+1.1%
+1.9
+0.9%
+-$6.2
+-$1.0
+-$1.0
+其他
+Others
+No
+No
+80
+400
+48
+85
+2.4%
+3.4%
+3.3
+0.8%
+$0.0
+$0.0
+$0.0
+Total
+200
+1000
+127
+281
+2.8%
+2.4%
+23.7
+2.4%
+-$2.6
+-$0.7
+-$3.0
+Actual
+(3.26-4.7)
+流量款
+Traffic Drivers
+No
+Yes
+26
+132
+18
+404
+2.9%
+2.6%
+5.5
+4.2%
+-$1.3
+-$1.5
+-$2.9
+高潜力款
+Growth Drivers
+Yes
+Yes
+25
+123
+6
+260
+2.0%
+3.7%
+1.1
+0.9%
+-$2.6
+-$1.2
+-$3.8
+利润款
+Profit Drivers
+Yes
+No
+24
+118
+7
+261
+2.7%
+4.2%
+2.2
+1.9%
+-$2.1
+-$1.6
+-$3.7
+其他
+Others
+No
+No
+80
+400
+3
+158
+3.5%
+3.8%
+0.6
+0.1%
+-$0.7
+-$1.6
+-$2.3
+Total
+155
+773
+34
+328
+2.8%
+3.0%
+9.3
+1.2%
+-$1.6
+-$1.5
+-$3.1
+Runrate
+流量款
+Traffic Drivers
+No
+Yes
+53%
+53%
+37%
+88%
+95%
+119%
+37%
+70%
+-$1.8
+$0.5
+-$1.3
+高潜力款
+Growth Drivers
+Yes
+Yes
+82%
+82%
+70%
+97%
+82%
+55%
+31%
+38%
+$1.5
+$1.2
+$2.1
+利润款
+Profit Drivers
+Yes
+No
+59%
+59%
+33%
+81%
+119%
+370%
+117%
+198%
+-$4.2
+$0.6
+$2.7
+其他
+Others
+No
+No
+100%
+100%
+6%
+187%
+147%
+112%
+18%
+18%
+$0.7
+$1.6
+$2.3
+Total
+77%
+77%
+27%
+117%
+100%
+126%
+39%
+51%
+-$1.0
+$0.8
+$0.2
+SKU segments management: Feb & Mar Role Model pilot investment result
+6
+In first month, ADO per Seller is 9.3 (39% RR), mainly due to SKU per Seller below target for each group: mainly lack of 流量款/高潜力款; We have enough supply for 利润款 but not selected all for mkt push to keep the SKU investment contribution
+Overall Impression per SKU, CTR% and CR% are on par for performing skus but each group is lagging in different metric:
+高潜力款 have lower CTR% and CR% than 利润款, which is different from our assumption
+Next step to find out a more accurate price criteria to regroup 高潜力款 and 利润款
+Overall CPO is on par vs. Target, but ads CPO is higher due to 利润款/流量款 ads CPO much worse than expected
+  3
+  1
+  2
+  4
+  2
+  1
+  1
+  3
+4
+https://docs.google.com/presentation/d/1CNGH-Bv3H0TJE_Je9Nd5eohrrjIim7g_M6M7AFFQcoc/edit?slide=id.g3d00dda4194_0_233#slide=id.g3d00dda4194_0_233
+
+7
+MKT new seller pitching
+Increase SKU volume
+Co-work with BPM/MKT to identify SKU migration blockers for new launched ERP.
+Two issues identified on 妙手. WIP with BPM and 妙手 to resolve.
+Diving deep on 店小秘，芒果，快递助手
+Existing sellers
+Push seller to increase MTSKU
+Mid of March batch: push 117 low SKU sellers to increase new SKU. 34 sellers made progress with +8.2K SKU  
+
+Role models
+1v1 push on role model SKU volume
+16/27 sellers MTSKU>200 
+Average 1371 MTSKU
+Keep following 14 under performed sellers.  
+Bring in unique SKUs
+Building 上新指引 — Mass education and 1v1 push
+Focus on key categories, provide SKU examples and price range. ETA 4.15
+Competitive price
+Monthly price drop program
+Apr batch: Expend seller pool to ADO>0. 27 sellers dropped price, +42% vs Mar batch, covering 34% of  ERP ADO and 30% of ERP ADG
+20 sellers offered >=30% discount. Average discount offered 29%
+
+1v1 negotiation during price drop negotiaton
+4 out of 19 sellers reduced price in Apr batch. Keep following on rejected sellers. 
+Building 上新指引 — share to MKT, support mass pitching events
+Focus on key categories, provide SKU examples and price range. ETA 4.15
+
+Provide seller level feedback to push for more unique SKU under specific category
+Lack of SKU for top 3 segments. To provide seller level feedback to push SKU into top 3 segments.
+SKU segments management: We applied structured approach to drive SKU volume, uniqueness and price competitively. Enable SKU growth through seller pitching, existing seller management and role model focus.
