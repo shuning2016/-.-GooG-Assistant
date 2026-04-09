@@ -27,7 +27,7 @@ Optional user arguments:
 - Calendar scope: work calendar only
 - Timezone: Asia/Singapore
 - Default lookback: since the last saved briefing checkpoint
-- First-run fallback: previous 72 hours
+- First-run fallback: previous 72 hours1
 
 ## Files used by this skill
 - Checkpoint file: `.claude/state/daily-brief.json`
@@ -155,7 +155,76 @@ Prep expectations:
 - flag overlaps explicitly
 - do not flag transit or location buffers
 
-## Step 5: classify by priority
+## Step 5: fetch and analyze meeting pre-reads
+For each important meeting identified in Step 4, search the last 24 hours of email for pre-read materials — typically emails with attachments or Google Drive links sent ahead of the meeting.
+
+### Search for pre-read emails
+For each important meeting, extract 2–3 significant words from the meeting title (strip filler words like "sync", "catch-up", "weekly", "check-in") and run:
+```bash
+gws gmail users messages list --params '{"userId": "me", "q": "has:attachment newer_than:1d \"MEETING_KEYWORDS\"", "maxResults": "10"}'
+```
+If that returns nothing, retry without quotes:
+```bash
+gws gmail users messages list --params '{"userId": "me", "q": "has:attachment newer_than:1d MEETING_KEYWORDS", "maxResults": "10"}'
+```
+
+### Get attachment metadata
+For each matching email, fetch the full message to identify attachments and any Drive links in the body:
+```bash
+gws gmail users messages get --params '{"userId": "me", "id": "MESSAGE_ID", "format": "full"}'
+```
+From the response, extract:
+- `payload.parts[*].filename` — attachment name
+- `payload.parts[*].mimeType` — file type
+- `payload.parts[*].body.attachmentId` — download ID
+- Any `drive.google.com` URLs in the plain-text body
+
+### Download and read attachment content
+
+**Option A — Google Drive file linked in the email body** (Docs, Slides, Sheets):
+Extract the `fileId` from the URL and export as plain text:
+```bash
+gws drive files export --params '{"fileId": "FILE_ID", "mimeType": "text/plain"}' --output /tmp/preread_NAME.txt
+```
+Then read the exported file.
+
+**Option B — Binary attachment** (PDF, PPTX, DOCX, etc.):
+Download the raw attachment:
+```bash
+gws gmail users messages attachments get --params '{"userId": "me", "messageId": "MESSAGE_ID", "id": "ATTACHMENT_ID"}'
+```
+Decode and save:
+```bash
+python3 -c "
+import json, sys, base64
+d = json.load(sys.stdin)
+decoded = base64.urlsafe_b64decode(d['data'] + '==')
+with open('/tmp/preread_out', 'wb') as f:
+    f.write(decoded)
+print(len(decoded), 'bytes written')
+"
+```
+Then extract text based on type:
+- **PDF** (try `pdftotext` first): `pdftotext /tmp/preread_out /tmp/preread_out.txt && cat /tmp/preread_out.txt`
+- **PDF fallback**: `python3 -c "import pypdf, sys; r=pypdf.PdfReader(sys.argv[1]); [print(p.extract_text()) for p in r.pages]" /tmp/preread_out 2>/dev/null`
+- **PPTX**: `python3 -c "from pptx import Presentation; prs=Presentation(sys.argv[1]); [print(shape.text_frame.text) for slide in prs.slides for shape in slide.shapes if shape.has_text_frame]" /tmp/preread_out 2>/dev/null`
+- If extraction fails, note the attachment name, type, and sender — do not skip the meeting entry.
+
+### What to capture per meeting
+For each important meeting where a pre-read was found:
+- Attachment name, type, and sender
+- 3–5 bullet key points from the content
+- Any explicit asks, decisions needed, or data points directly relevant to the meeting
+- Open questions or action items addressed to Shuning
+
+### Suppression rules
+- Skip `.ics` calendar attachments
+- Skip image attachments under 50 KB (likely logos or signatures)
+- Skip attachments where text extraction yields fewer than 50 words
+- Do not analyze more than 3 attachments per meeting
+- If no pre-read is found for a meeting, note: `No pre-read found (past 24 h)`
+
+## Step 6: classify by priority
 Use this default rubric.
 
 ### P0
@@ -178,7 +247,7 @@ Use this default rubric.
 - Lower-risk follow-up
 - Items that can wait beyond the next 2 days
 
-## Step 6: produce the briefing
+## Step 7: produce the briefing
 The final answer should be crisp, action-oriented, and easy to skim.
 
 Use this structure:
@@ -215,7 +284,17 @@ Include this section when there are relevant Drive file changes. For each file s
 
 Group by reason when there are many items. Skip this section entirely if no relevant Drive activity was found.
 
-### 5) Action sections
+### 5) Meeting pre-reads
+Include this section when important meetings exist today. For each important meeting:
+- **[Meeting name]** — [time, SGT]
+  - Source: attachment name, type, and sender
+  - Key points: 3–5 bullets summarizing the content
+  - Action items or open questions flagged in the document (if any)
+  - `No pre-read found (past 24 h)` if nothing was found for this meeting
+
+Skip this section entirely only if no important meetings exist today.
+
+### 6) Action sections
 Include these sections when relevant:
 - `What matters today`
 - `What can wait`
@@ -233,7 +312,7 @@ Rules for the action sections:
 - Note uncertainty plainly.
 - For reply suggestions, provide only short suggested responses or talking points unless Shuning explicitly asks for a full draft.
 
-## Step 7: save the result locally
+## Step 8: save the result locally
 After producing the briefing:
 1. Ensure `briefings/` exists.
 2. Save or append the briefing to `briefings/YYYY-MM-DD.md`.
@@ -249,7 +328,7 @@ Recommended checkpoint update:
 - `last_successful_run_at` = current Singapore timestamp
 - `last_briefing_file` = saved markdown path
 
-## Step 8: end-state quality check
+## Step 9: end-state quality check
 Before finishing, verify that the briefing answers:
 - What must Shuning do today?
 - Who needs a reply?
@@ -258,5 +337,6 @@ Before finishing, verify that the briefing answers:
 - What is risky or slipping?
 - What can safely wait?
 - Are there Drive file changes Shuning should be aware of?
+- Were pre-reads found and summarized for today's important meetings?
 
 If any of those remain unanswered and the source tools could answer them, check once more before concluding.
