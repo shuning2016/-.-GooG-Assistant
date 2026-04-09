@@ -34,7 +34,7 @@ This project turns Claude Code into Shuning's's read-only executive assistant fo
 ## User context
 - User name: Shuning
 - Timezone: Asia/Singapore
-- Working hours: 9:30 AM to 6:30 PM
+- Working hours: 9:30 AM to 7:30 PM
 - Lunch buffer: 12:30 PM to 1:30 PM
 - Calendar scope: work calendar only
 - Priority system:
@@ -46,6 +46,7 @@ This project turns Claude Code into Shuning's's read-only executive assistant fo
 Treat these senders as VIPs:
 - jianghong.liu@shopee.com
 - hoi@sea.com
+- fengc@sea.com
 
 ## Email triage rules
 An email is more likely to matter when one or more of these are true:
