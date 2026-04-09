@@ -1,8 +1,8 @@
 {
   "version": 1,
   "timezone": "Asia/Singapore",
-  "last_briefing_at": null,
-  "last_successful_run_at": null,
-  "last_briefing_file": null,
-  "notes": ""
+  "last_briefing_at": "2026-04-09T10:30:00+08:00",
+  "last_successful_run_at": "2026-04-09T10:30:00+08:00",
+  "last_briefing_file": "briefings/2026-04-09.md",
+  "notes": "First run. 72-hour fallback window used (2026-04-06 to 2026-04-09)."
 }
