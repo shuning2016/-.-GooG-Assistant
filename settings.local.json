@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(gws --help)",
+      "Bash(gws drive:*)",
+      "Bash(gws gmail:*)",
+      "Bash(python3 -c \" import json,sys,base64 d=json.load\\(sys.stdin\\) hdrs={h['name']:h['value'] for h in d.get\\('payload',{}\\).get\\('headers',[]\\)} print\\('From:', hdrs.get\\('From',''\\)\\) print\\('To:', hdrs.get\\('To',''\\)\\) print\\('Cc:', hdrs.get\\('Cc',''\\)\\) print\\('Subject:', hdrs.get\\('Subject',''\\)\\) def get_text\\(part\\): if part.get\\('mimeType'\\) == 'text/plain': data = part.get\\('body',{}\\).get\\('data',''\\) if data: return base64.urlsafe_b64decode\\(data + '=='\\).decode\\('utf-8','ignore'\\) for p in part.get\\('parts',[]\\): r = get_text\\(p\\) if r: return r return '' body = get_text\\(d.get\\('payload',{}\\)\\) print\\(body[:2000]\\) \")",
+      "Bash(python3 -c ':*)",
+      "Bash(python3 -c \" import json,sys,base64 d=json.load\\(sys.stdin\\) hdrs={h['name']:h['value'] for h in d.get\\('payload',{}\\).get\\('headers',[]\\)} print\\('From:', hdrs.get\\('From',''\\)\\) print\\('To:', hdrs.get\\('To',''\\)\\) print\\('Cc:', hdrs.get\\('Cc',''\\)\\) def get_text\\(part\\): if part.get\\('mimeType'\\) == 'text/plain': data = part.get\\('body',{}\\).get\\('data',''\\) if data: return base64.urlsafe_b64decode\\(data + '=='\\).decode\\('utf-8','ignore'\\) for p in part.get\\('parts',[]\\): r = get_text\\(p\\) if r: return r return '' body = get_text\\(d.get\\('payload',{}\\)\\) print\\(body[:1500]\\) \")",
+      "Bash(gws workflow:*)",
+      "Bash(gws schema:*)",
+      "Bash(gws calendar:*)"
+    ]
+  }
+}
