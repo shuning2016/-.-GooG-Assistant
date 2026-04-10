@@ -141,8 +141,10 @@ Use this by default:
 - Use `.claude/state/daily-brief.json` as the checkpoint file for the daily brief workflow.
 - The checkpoint defines the default `since last briefing` window.
 - On the first run, if no valid checkpoint exists, use the previous 72 hours.
-- Save each briefing to `briefings/YYYY-MM-DD.md`.
-- If a file for that date already exists, append a new run section with the current time instead of overwriting it.
+- Save each briefing using am/pm suffix based on the time of run (Asia/Singapore):
+  - Morning run (before 12:00 SGT): save to `briefings/YYYY-MM-DD-am.md`
+  - Afternoon/evening run (12:00 SGT or later): save to `briefings/YYYY-MM-DD-pm.md`
+- If the target file already exists, append a new run section with the current time instead of overwriting it.
 - Update the checkpoint only after the briefing is successfully completed and saved.
 
 ## Writing style for the final briefing
