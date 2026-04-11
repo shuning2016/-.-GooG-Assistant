@@ -7,8 +7,10 @@ Vercel calls this endpoint automatically and passes Authorization: Bearer <CRON_
 
 import json
 import os
+import sys
 from http.server import BaseHTTPRequestHandler
 
+sys.path.insert(0, os.path.dirname(__file__))
 from _briefing import run_briefing
 
 
