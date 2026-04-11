@@ -1,9 +1,6 @@
 ---
-name: daily-brief
 description: Generate Shuning's read-only executive daily briefing from work Gmail, the work calendar, and Google Drive. Use only when Shuning explicitly invokes /daily-brief or directly asks for an inbox plus calendar briefing. Review new activity since the last saved briefing, identify direct asks, deadlines, prep, conflicts, risks, Drive file changes, and produce a concise action-oriented summary.
 argument-hint: "[optional date override or focus]"
-disable-model-invocation: true
-effort: high
 ---
 
 # Daily Brief
