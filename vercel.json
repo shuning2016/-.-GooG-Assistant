@@ -6,14 +6,11 @@
     }
   ],
   "functions": {
-    "vercel-daily-brief/api/cron.py": { "maxDuration": 300 },
-    "vercel-daily-brief/api/trigger.py": { "maxDuration": 300 },
-    "vercel-daily-brief/api/view.py": { "maxDuration": 30 }
+    "api/cron.py":    { "maxDuration": 300 },
+    "api/trigger.py": { "maxDuration": 300 },
+    "api/view.py":    { "maxDuration": 30 }
   },
   "rewrites": [
-    { "source": "/api/cron",    "destination": "/vercel-daily-brief/api/cron" },
-    { "source": "/api/view",    "destination": "/vercel-daily-brief/api/view" },
-    { "source": "/api/trigger", "destination": "/vercel-daily-brief/api/trigger" },
-    { "source": "/",            "destination": "/vercel-daily-brief/api/view" }
+    { "source": "/", "destination": "/api/view" }
   ]
 }
