@@ -9,6 +9,9 @@
     "api/cron.py": {
       "maxDuration": 300
     },
+    "api/trigger.py": {
+      "maxDuration": 300
+    },
     "api/view.py": {
       "maxDuration": 30
     }
