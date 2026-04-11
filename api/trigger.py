@@ -39,6 +39,8 @@ class handler(BaseHTTPRequestHandler):
             self.send_header("Content-Length", "0")
             self.end_headers()
         except Exception as exc:
+            import traceback
+            traceback.print_exc()  # shows in Vercel function logs
             body = f"Briefing generation failed: {exc}".encode()
             self.send_response(500)
             self.send_header("Content-Type", "text/plain")
