@@ -24,19 +24,9 @@ def _redis() -> Redis:
     )
 
 
-def _trigger_btn_html() -> str:
-    """Return a Run Now button if TRIGGER_SECRET is configured."""
+def _trigger_url() -> str:
     secret = os.environ.get("TRIGGER_SECRET", "")
-    if not secret:
-        return ""
-    return f"""<button class="run-btn" onclick="runBrief(this)">Run Now</button>
-<script>
-function runBrief(btn) {{
-  btn.disabled = true;
-  btn.textContent = 'Running\u2026';
-  window.location.href = '/api/trigger?token={secret}';
-}}
-</script>"""
+    return f"/api/trigger?token={secret}" if secret else ""
 
 
 def _render_html(briefing_md: str, date_str: str) -> str:
@@ -44,121 +34,259 @@ def _render_html(briefing_md: str, date_str: str) -> str:
         briefing_md,
         extensions=["tables", "nl2br", "fenced_code", "toc"],
     )
-    trigger_btn = _trigger_btn_html()
+    turl = _trigger_url()
+    run_btn = f'<button class="run-btn" id="runBtn" onclick="runBrief()">&#9654; Run Now</button>' if turl else ""
+    run_js = f"""
+<script>
+function runBrief() {{
+  var btn = document.getElementById('runBtn');
+  if (btn) {{ btn.disabled = true; btn.textContent = 'Running\u2026'; }}
+  window.location.href = '{turl}';
+}}
+// Tag P0/P1/P2 list items for badge styling
+document.addEventListener('DOMContentLoaded', function() {{
+  document.querySelectorAll('li').forEach(function(li) {{
+    var t = li.textContent;
+    if (/^\\s*P0[^a-z0-9]/i.test(t)) li.classList.add('p0-item');
+    else if (/^\\s*P1[^a-z0-9]/i.test(t)) li.classList.add('p1-item');
+    else if (/^\\s*P2[^a-z0-9]/i.test(t)) li.classList.add('p2-item');
+  }});
+  // Highlight "What Changed" delta section
+  document.querySelectorAll('h2,h3').forEach(function(h) {{
+    if (h.textContent.includes('What Changed') || h.textContent.includes('\ud83d\udd04')) {{
+      h.classList.add('delta-header');
+      var next = h.nextElementSibling;
+      while (next && !['H2','H3'].includes(next.tagName)) {{
+        next.classList.add('delta-body');
+        next = next.nextElementSibling;
+      }}
+    }}
+  }});
+}});
+</script>""" if turl else """
+<script>
+document.addEventListener('DOMContentLoaded', function() {{
+  document.querySelectorAll('li').forEach(function(li) {{
+    var t = li.textContent;
+    if (/^\\s*P0[^a-z0-9]/i.test(t)) li.classList.add('p0-item');
+    else if (/^\\s*P1[^a-z0-9]/i.test(t)) li.classList.add('p1-item');
+    else if (/^\\s*P2[^a-z0-9]/i.test(t)) li.classList.add('p2-item');
+  }});
+  document.querySelectorAll('h2,h3').forEach(function(h) {{
+    if (h.textContent.includes('What Changed') || h.textContent.includes('\ud83d\udd04')) {{
+      h.classList.add('delta-header');
+      var next = h.nextElementSibling;
+      while (next && !['H2','H3'].includes(next.tagName)) {{
+        next.classList.add('delta-body');
+        next = next.nextElementSibling;
+      }}
+    }}
+  }});
+}});
+</script>"""
+
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Daily Brief — {date_str}</title>
+<title>Daily Brief \u2014 {date_str}</title>
 <style>
+  :root {{
+    --blue:    #1D6FE8;
+    --green:   #16a34a;
+    --amber:   #d97706;
+    --red:     #dc2626;
+    --bg:      #F5F6FA;
+    --surface: #ffffff;
+    --text:    #1a1a2e;
+    --muted:   #6b7280;
+    --border:  #e5e7eb;
+    --header-h: 58px;
+  }}
   *{{box-sizing:border-box;margin:0;padding:0}}
   body{{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
-        background:#f4f6f9;color:#1a1a2e;line-height:1.65}}
-  /* sticky header */
-  .header{{position:sticky;top:0;z-index:100;
-           background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);
-           color:#fff;padding:18px 32px;
-           box-shadow:0 2px 8px rgba(0,0,0,.25);
-           display:flex;align-items:center;gap:16px}}
-  .header h1{{font-size:1.25rem;font-weight:700;flex:1}}
-  .header .meta{{font-size:.8rem;opacity:.6}}
-  .run-btn{{background:#4f46e5;color:#fff;border:none;border-radius:6px;
-            padding:8px 16px;font-size:.85rem;font-weight:600;cursor:pointer;
-            white-space:nowrap;transition:opacity .15s}}
+        background:var(--bg);color:var(--text);line-height:1.65;font-size:15px}}
+
+  /* ── Navbar ── */
+  .navbar{{
+    position:sticky;top:0;z-index:200;height:var(--header-h);
+    background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);
+    color:#fff;padding:0 28px;
+    display:flex;align-items:center;gap:14px;
+    box-shadow:0 2px 10px rgba(0,0,0,.3);
+  }}
+  .navbar-title{{font-size:1.05rem;font-weight:700;letter-spacing:.3px;flex:1}}
+  .navbar-date{{
+    font-size:.78rem;background:rgba(255,255,255,.1);
+    border-radius:20px;padding:4px 12px;white-space:nowrap;
+  }}
+  .navbar-tz{{font-size:.72rem;opacity:.5}}
+  .run-btn{{
+    background:var(--blue);color:#fff;border:none;border-radius:6px;
+    padding:7px 16px;font-size:.82rem;font-weight:600;cursor:pointer;
+    white-space:nowrap;transition:opacity .15s;letter-spacing:.2px;
+  }}
   .run-btn:hover{{opacity:.85}}
-  .run-btn:disabled{{opacity:.5;cursor:default}}
-  /* layout */
-  .container{{max-width:920px;margin:32px auto;padding:0 20px 80px}}
-  .card{{background:#fff;border-radius:14px;padding:36px 40px;
-         box-shadow:0 1px 4px rgba(0,0,0,.07)}}
-  /* typography */
-  h1{{font-size:1.7rem;color:#1a1a2e;margin:1.6rem 0 .6rem}}
-  h2{{font-size:1.25rem;color:#1a1a2e;margin:1.8rem 0 .5rem;
-      border-bottom:2px solid #e9ecef;padding-bottom:.35rem}}
-  h3{{font-size:1rem;color:#374151;margin:1.2rem 0 .3rem}}
-  p{{margin:.55rem 0}}
-  ul,ol{{padding-left:1.5rem;margin:.4rem 0}}
+  .run-btn:disabled{{opacity:.45;cursor:default}}
+
+  /* ── Layout ── */
+  .page{{max-width:940px;margin:28px auto;padding:0 18px 80px}}
+
+  /* ── Cards ── */
+  .card{{
+    background:var(--surface);border-radius:14px;
+    padding:28px 32px;margin-bottom:16px;
+    box-shadow:0 1px 3px rgba(0,0,0,.06),0 4px 12px rgba(0,0,0,.04);
+  }}
+
+  /* ── Typography ── */
+  h1{{font-size:1.55rem;color:var(--text);margin:1.4rem 0 .5rem;font-weight:700}}
+  h2{{
+    font-size:1.05rem;color:var(--text);
+    margin:1.6rem 0 .5rem;font-weight:700;
+    border-bottom:2px solid var(--border);padding-bottom:.35rem;
+    display:flex;align-items:center;gap:6px;
+  }}
+  h3{{font-size:.95rem;color:#374151;margin:1.1rem 0 .3rem;font-weight:600}}
+  p{{margin:.5rem 0;color:var(--text)}}
+  ul,ol{{padding-left:1.4rem;margin:.35rem 0}}
   li{{margin:.3rem 0}}
-  /* tables */
-  table{{border-collapse:collapse;width:100%;margin:1rem 0;font-size:.9rem}}
-  th{{background:#f4f6f9;font-weight:600;padding:9px 13px;
-      border:1px solid #dee2e6;text-align:left}}
-  td{{padding:8px 13px;border:1px solid #dee2e6;vertical-align:top}}
-  tr:nth-child(even){{background:#f9fafb}}
-  /* code */
-  code{{background:#f1f3f5;padding:2px 6px;border-radius:4px;
-        font-family:'SF Mono',Menlo,monospace;font-size:.87em}}
-  pre{{background:#f1f3f5;border-radius:8px;padding:16px;overflow-x:auto;margin:.8rem 0}}
-  pre code{{background:none;padding:0}}
-  /* misc */
-  a{{color:#4f46e5;text-decoration:none}}
+  a{{color:var(--blue);text-decoration:none}}
   a:hover{{text-decoration:underline}}
-  blockquote{{border-left:4px solid #4f46e5;padding-left:14px;
-              color:#6b7280;margin:.7rem 0}}
-  hr{{border:none;border-top:1px solid #e9ecef;margin:1.4rem 0}}
-  input[type=checkbox]{{margin-right:6px;accent-color:#4f46e5}}
-  /* priority badges */
-  li:has(> strong:first-child){{list-style:none;margin-left:-1.5rem;padding-left:1.5rem}}
-  /* back-to-top */
-  .btt{{position:fixed;bottom:28px;right:28px;background:#4f46e5;color:#fff;
-        border:none;border-radius:50%;width:42px;height:42px;cursor:pointer;
-        font-size:1.2rem;box-shadow:0 2px 8px rgba(0,0,0,.2);
-        display:flex;align-items:center;justify-content:center;opacity:.8}}
+  blockquote{{
+    border-left:3px solid var(--blue);padding:8px 14px;
+    background:#f0f4ff;border-radius:0 6px 6px 0;
+    margin:.6rem 0;color:#374151;font-style:italic;
+  }}
+  hr{{border:none;border-top:1px solid var(--border);margin:1.2rem 0}}
+  code{{
+    background:#f1f3f5;padding:2px 6px;border-radius:4px;
+    font-family:'SF Mono',Menlo,Consolas,monospace;font-size:.85em;
+  }}
+  pre{{background:#f1f3f5;border-radius:8px;padding:16px;overflow-x:auto;margin:.7rem 0}}
+  pre code{{background:none;padding:0}}
+
+  /* ── Tables ── */
+  table{{border-collapse:collapse;width:100%;margin:.8rem 0;font-size:.88rem}}
+  th{{
+    background:#f4f6f9;font-weight:600;padding:9px 13px;
+    border:1px solid var(--border);text-align:left;color:var(--text);
+  }}
+  td{{padding:8px 13px;border:1px solid var(--border);vertical-align:top}}
+  tr:nth-child(even) td{{background:#f9fafb}}
+
+  /* ── Priority badges on list items ── */
+  li.p0-item{{list-style:none;padding-left:0;margin-left:-1.4rem;padding-left:1.4rem}}
+  li.p1-item{{list-style:none;padding-left:0;margin-left:-1.4rem;padding-left:1.4rem}}
+  li.p2-item{{list-style:none;padding-left:0;margin-left:-1.4rem;padding-left:1.4rem}}
+  li.p0-item::before{{
+    content:'P0';display:inline-block;
+    background:#fef2f2;color:var(--red);border:1px solid #fecaca;
+    border-radius:4px;font-size:.7rem;font-weight:700;
+    padding:1px 6px;margin-right:8px;vertical-align:middle;
+  }}
+  li.p1-item::before{{
+    content:'P1';display:inline-block;
+    background:#fffbeb;color:var(--amber);border:1px solid #fde68a;
+    border-radius:4px;font-size:.7rem;font-weight:700;
+    padding:1px 6px;margin-right:8px;vertical-align:middle;
+  }}
+  li.p2-item::before{{
+    content:'P2';display:inline-block;
+    background:#f0f9ff;color:#0369a1;border:1px solid #bae6fd;
+    border-radius:4px;font-size:.7rem;font-weight:700;
+    padding:1px 6px;margin-right:8px;vertical-align:middle;
+  }}
+
+  /* ── Checkboxes ── */
+  input[type=checkbox]{{margin-right:7px;accent-color:var(--blue);width:14px;height:14px}}
+
+  /* ── Delta / What Changed section ── */
+  .delta-header{{
+    color:var(--blue) !important;
+    border-bottom-color:var(--blue) !important;
+  }}
+  .delta-body{{
+    background:#f0f4ff;border-radius:8px;padding:10px 14px;margin:.4rem 0;
+  }}
+
+  /* ── Back to top ── */
+  .btt{{
+    position:fixed;bottom:26px;right:26px;
+    background:var(--blue);color:#fff;border:none;border-radius:50%;
+    width:40px;height:40px;cursor:pointer;font-size:1.1rem;
+    box-shadow:0 2px 8px rgba(0,0,0,.2);
+    display:flex;align-items:center;justify-content:center;opacity:.75;
+    transition:opacity .15s;
+  }}
   .btt:hover{{opacity:1}}
+
+  /* ── Responsive ── */
   @media(max-width:600px){{
-    .card{{padding:20px 18px}}
-    .container{{padding:0 10px 60px}}
-    .header{{padding:14px 16px}}
+    .card{{padding:18px 16px}}
+    .page{{padding:0 10px 60px}}
+    .navbar{{padding:0 14px;gap:10px}}
+    .navbar-tz{{display:none}}
   }}
 </style>
 </head>
 <body>
-<div class="header">
-  <h1>Daily Brief</h1>
-  <div class="meta">{date_str} &nbsp;·&nbsp; Asia/Singapore</div>
-  {trigger_btn}
-</div>
-<div class="container">
+<nav class="navbar">
+  <span class="navbar-title">&#128203; Daily Brief</span>
+  <span class="navbar-date">{date_str}</span>
+  <span class="navbar-tz">Asia/Singapore</span>
+  {run_btn}
+</nav>
+<div class="page">
   <div class="card">
     {body}
   </div>
 </div>
-<button class="btt" onclick="window.scrollTo({{top:0,behavior:'smooth'}})" title="Back to top">↑</button>
+<button class="btt" onclick="window.scrollTo({{top:0,behavior:'smooth'}})" title="Back to top">\u2191</button>
+{run_js}
 </body>
 </html>"""
 
 
 def _not_found(date_str: str) -> str:
-    trigger_btn = _trigger_btn_html()
+    turl = _trigger_url()
+    cta = f"""
+    <button class="run-btn" onclick="this.disabled=true;this.textContent='Running\u2026';window.location.href='{turl}'">
+      &#9654;&nbsp; Generate Brief Now
+    </button>""" if turl else "<p class='hint'>Check that the cron ran successfully.</p>"
     return f"""<!DOCTYPE html>
 <html lang="en">
-<head><meta charset="UTF-8"><title>Not found</title>
+<head>
+<meta charset="UTF-8">
+<title>No brief \u2014 {date_str}</title>
 <style>
-  body{{font-family:system-ui;display:flex;align-items:center;justify-content:center;
-        min-height:100vh;margin:0;background:#f4f6f9;color:#1a1a2e}}
-  .box{{text-align:center;padding:40px}}
-  h2{{font-size:1.5rem;margin-bottom:8px}}
-  p{{color:#6b7280;margin-bottom:24px}}
-  .run-btn{{background:#4f46e5;color:#fff;border:none;border-radius:6px;
-            padding:10px 22px;font-size:.95rem;font-weight:600;cursor:pointer;
-            transition:opacity .15s}}
+  :root{{--blue:#1D6FE8;--bg:#F5F6FA;--text:#1a1a2e}}
+  *{{box-sizing:border-box;margin:0;padding:0}}
+  body{{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+        background:var(--bg);color:var(--text);min-height:100vh;
+        display:flex;align-items:center;justify-content:center}}
+  .box{{text-align:center;padding:48px 32px;max-width:420px}}
+  .icon{{font-size:3rem;margin-bottom:18px;opacity:.4}}
+  h2{{font-size:1.35rem;margin-bottom:10px;font-weight:700}}
+  p{{color:#6b7280;margin-bottom:28px;font-size:.92rem;line-height:1.5}}
+  .hint{{color:#9ca3af;font-size:.85rem;margin-top:16px}}
+  .run-btn{{
+    background:var(--blue);color:#fff;border:none;border-radius:8px;
+    padding:12px 28px;font-size:.95rem;font-weight:600;cursor:pointer;
+    transition:opacity .15s;letter-spacing:.2px;
+  }}
   .run-btn:hover{{opacity:.85}}
-  .run-btn:disabled{{opacity:.5;cursor:default}}
+  .run-btn:disabled{{opacity:.45;cursor:default}}
 </style>
 </head>
 <body>
 <div class="box">
-  <h2>No brief found for {date_str}</h2>
-  <p>Briefings are stored for 7 days. Check that the cron ran successfully.</p>
-  {trigger_btn}
+  <div class="icon">&#128203;</div>
+  <h2>No brief for {date_str}</h2>
+  <p>Briefings are stored for 7 days.<br>The scheduled cron runs daily at 8:00 AM SGT.</p>
+  {cta}
 </div>
-<script>
-function runBrief(btn) {{
-  btn.disabled = true;
-  btn.textContent = 'Running\u2026';
-}}
-</script>
 </body>
 </html>"""
 
@@ -169,7 +297,6 @@ class handler(BaseHTTPRequestHandler):
         params = parse_qs(parsed.query)
         date_str = params.get("date", [datetime.now(SGT).strftime("%Y-%m-%d")])[0]
 
-        # Basic date format guard
         try:
             datetime.strptime(date_str, "%Y-%m-%d")
         except ValueError:
