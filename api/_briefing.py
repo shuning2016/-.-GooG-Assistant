@@ -223,7 +223,7 @@ def store(date_str: str, briefing: str) -> None:
 
 # ─── Email ────────────────────────────────────────────────────────────────────
 
-def _build_html(briefing_md: str, date_str: str, view_url: str) -> str:
+def _build_html(briefing_md: str, date_str: str, view_url: str, generated_at: str) -> str:
     body_html = md_lib.markdown(briefing_md, extensions=["tables", "nl2br", "fenced_code"])
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -239,7 +239,8 @@ def _build_html(briefing_md: str, date_str: str, view_url: str) -> str:
         color:#fff;padding:24px 32px;border-radius:0 0 12px 12px}}
   .hdr h1{{margin:0;font-size:1.4rem}}
   .hdr p{{margin:4px 0 0;opacity:.65;font-size:.85rem}}
-  .btn{{display:inline-block;margin:20px 0 0;background:#4f46e5;color:#fff!important;
+  .btn{{display:inline-block;margin:20px 0 0;background:rgba(255,255,255,0.15);color:#fff!important;
+        border:1px solid rgba(255,255,255,0.4);
         padding:10px 22px;border-radius:6px;text-decoration:none;font-weight:600;font-size:.9rem}}
   .card{{background:#fff;border-radius:12px;padding:28px 32px;
          margin:20px 16px 0;box-shadow:0 1px 4px rgba(0,0,0,.08)}}
@@ -260,7 +261,7 @@ def _build_html(briefing_md: str, date_str: str, view_url: str) -> str:
 <div class="wrap">
   <div class="hdr">
     <h1>Daily Brief — {date_str}</h1>
-    <p>Generated 8:00 AM SGT &nbsp;·&nbsp; Asia/Singapore</p>
+    <p>Generated {generated_at} SGT &nbsp;·&nbsp; Asia/Singapore</p>
     <a href="{view_url}" class="btn">View in browser →</a>
   </div>
   <div class="card">
@@ -271,9 +272,11 @@ def _build_html(briefing_md: str, date_str: str, view_url: str) -> str:
 </html>"""
 
 
-def send_email(briefing_md: str, date_str: str, view_url: str) -> None:
-    html = _build_html(briefing_md, date_str, view_url)
-    subject = f"Daily Brief — {date_str}"
+def send_email(briefing_md: str, date_str: str, view_url: str, now_sgt: datetime) -> None:
+    generated_at = now_sgt.strftime("%H:%M")
+    html = _build_html(briefing_md, date_str, view_url, generated_at)
+    username = RECIPIENT.split("@")[0]
+    subject = f"{username} | Daily Brief - {now_sgt.strftime('%m-%d %H:%M')}"
     from_email = os.environ.get("FROM_EMAIL", "assistant@example.com")
 
     if os.environ.get("SENDGRID_API_KEY"):
@@ -342,5 +345,5 @@ def run_briefing() -> tuple[str, str, str]:
         base = f"https://{base}"
     view_url = f"{base}/api/view?date={today_str}"
 
-    send_email(briefing, today_str, view_url)
+    send_email(briefing, today_str, view_url, now_sgt)
     return today_str, view_url, briefing
