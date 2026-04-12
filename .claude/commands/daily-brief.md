@@ -28,7 +28,7 @@ Optional user arguments:
 
 ## Files used by this skill
 - Checkpoint file: `.claude/state/daily-brief.json`
-- Saved briefings: `briefings/YYYY-MM-DD.md`
+- Saved briefings: `briefings/YYYY-MM-DD HH:mm.md`
 
 If the checkpoint file does not exist, create it when the run completes successfully.
 
@@ -309,16 +309,42 @@ Rules for the action sections:
 - Note uncertainty plainly.
 - For reply suggestions, provide only short suggested responses or talking points unless Shuning explicitly asks for a full draft.
 
-## Step 8: save the result locally
+## Step 8: delta comparison (if last briefing was more than 1 hour ago)
+
+Before saving, check whether this is a refresh run (last briefing exists and was completed more than 1 hour ago in SGT). If yes, read the previous briefing file and compare it with the new briefing. Produce a **"🔄 What Changed Since Last Brief"** section and insert it immediately after the Executive Brief.
+
+Only include a sub-section if there is a real change to report. Skip sub-sections with nothing new.
+
+### 8a. VIP replies
+Check email signals collected in Step 2. Flag any thread where a VIP sender (jianghong.liu@shopee.com, hoi@sea.com, fengc@sea.com) has sent a message that was not present in the previous briefing window. Format as:
+- **[VIP name]** replied to "[subject]" — [one-line summary of what they said or asked]
+
+### 8b. Meeting changes involving VIPs
+Compare today's calendar events against what was listed in the previous briefing. Flag any meeting that:
+- Was added, cancelled, or rescheduled since the last briefing
+- Had a VIP added or removed as attendee
+- Had its time, location, or description materially changed
+
+Format as:
+- **[Meeting title]** — [what changed: rescheduled / cancelled / VIP added / details updated]
+
+### 8c. Pre-read document changes
+Compare Drive signals from Step 3 against documents flagged in the previous briefing. Flag any pre-read file for an upcoming meeting that has been modified since the last briefing.
+
+Format as:
+- **[File name]** (for [meeting name]) — updated [HH:mm SGT], owner: [name]
+
+If the last briefing was less than 1 hour ago, or no previous briefing file exists, skip this step entirely.
+
+## Step 9: save the result locally
 After producing the briefing:
 1. Ensure `briefings/` exists.
-2. Save or append the briefing to `briefings/YYYY-MM-DD.md`.
+2. Save the briefing to `briefings/YYYY-MM-DD HH:mm.md` using the current Singapore time for HH:mm.
 3. Include metadata in the saved file:
    - generated timestamp
    - effective review window
    - any explicit user override
-4. If the file already exists for the same date, append a new run section with the current time.
-5. Update `.claude/state/daily-brief.json` only after the save succeeds.
+4. Update `.claude/state/daily-brief.json` only after the save succeeds.
 
 Recommended checkpoint update:
 - `last_briefing_at` = current Singapore timestamp

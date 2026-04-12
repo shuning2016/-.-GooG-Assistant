@@ -24,11 +24,27 @@ def _redis() -> Redis:
     )
 
 
+def _trigger_btn_html() -> str:
+    """Return a Run Now button if TRIGGER_SECRET is configured."""
+    secret = os.environ.get("TRIGGER_SECRET", "")
+    if not secret:
+        return ""
+    return f"""<button class="run-btn" onclick="runBrief(this)">Run Now</button>
+<script>
+function runBrief(btn) {{
+  btn.disabled = true;
+  btn.textContent = 'Running\u2026';
+  window.location.href = '/api/trigger?token={secret}';
+}}
+</script>"""
+
+
 def _render_html(briefing_md: str, date_str: str) -> str:
     body = md_lib.markdown(
         briefing_md,
         extensions=["tables", "nl2br", "fenced_code", "toc"],
     )
+    trigger_btn = _trigger_btn_html()
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -44,9 +60,14 @@ def _render_html(briefing_md: str, date_str: str) -> str:
            background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);
            color:#fff;padding:18px 32px;
            box-shadow:0 2px 8px rgba(0,0,0,.25);
-           display:flex;align-items:center;gap:20px}}
+           display:flex;align-items:center;gap:16px}}
   .header h1{{font-size:1.25rem;font-weight:700;flex:1}}
   .header .meta{{font-size:.8rem;opacity:.6}}
+  .run-btn{{background:#4f46e5;color:#fff;border:none;border-radius:6px;
+            padding:8px 16px;font-size:.85rem;font-weight:600;cursor:pointer;
+            white-space:nowrap;transition:opacity .15s}}
+  .run-btn:hover{{opacity:.85}}
+  .run-btn:disabled{{opacity:.5;cursor:default}}
   /* layout */
   .container{{max-width:920px;margin:32px auto;padding:0 20px 80px}}
   .card{{background:#fff;border-radius:14px;padding:36px 40px;
@@ -88,6 +109,7 @@ def _render_html(briefing_md: str, date_str: str) -> str:
   @media(max-width:600px){{
     .card{{padding:20px 18px}}
     .container{{padding:0 10px 60px}}
+    .header{{padding:14px 16px}}
   }}
 </style>
 </head>
@@ -95,6 +117,7 @@ def _render_html(briefing_md: str, date_str: str) -> str:
 <div class="header">
   <h1>Daily Brief</h1>
   <div class="meta">{date_str} &nbsp;·&nbsp; Asia/Singapore</div>
+  {trigger_btn}
 </div>
 <div class="container">
   <div class="card">
@@ -107,6 +130,7 @@ def _render_html(briefing_md: str, date_str: str) -> str:
 
 
 def _not_found(date_str: str) -> str:
+    trigger_btn = _trigger_btn_html()
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head><meta charset="UTF-8"><title>Not found</title>
@@ -115,14 +139,26 @@ def _not_found(date_str: str) -> str:
         min-height:100vh;margin:0;background:#f4f6f9;color:#1a1a2e}}
   .box{{text-align:center;padding:40px}}
   h2{{font-size:1.5rem;margin-bottom:8px}}
-  p{{color:#6b7280}}
+  p{{color:#6b7280;margin-bottom:24px}}
+  .run-btn{{background:#4f46e5;color:#fff;border:none;border-radius:6px;
+            padding:10px 22px;font-size:.95rem;font-weight:600;cursor:pointer;
+            transition:opacity .15s}}
+  .run-btn:hover{{opacity:.85}}
+  .run-btn:disabled{{opacity:.5;cursor:default}}
 </style>
 </head>
 <body>
 <div class="box">
   <h2>No brief found for {date_str}</h2>
   <p>Briefings are stored for 7 days. Check that the cron ran successfully.</p>
+  {trigger_btn}
 </div>
+<script>
+function runBrief(btn) {{
+  btn.disabled = true;
+  btn.textContent = 'Running\u2026';
+}}
+</script>
 </body>
 </html>"""
 
@@ -159,7 +195,6 @@ class handler(BaseHTTPRequestHandler):
         self.send_response(code)
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(body)))
-        # Cache for 5 min in browser; CDN won't cache (private)
         self.send_header("Cache-Control", "private, max-age=300")
         self.end_headers()
         self.wfile.write(body)
