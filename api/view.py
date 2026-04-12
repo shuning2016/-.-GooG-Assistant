@@ -53,7 +53,7 @@ document.addEventListener('DOMContentLoaded', function() {{
   }});
   // Highlight "What Changed" delta section
   document.querySelectorAll('h2,h3').forEach(function(h) {{
-    if (h.textContent.includes('What Changed') || h.textContent.includes('\ud83d\udd04')) {{
+    if (h.textContent.includes('What Changed') || h.textContent.includes('🔄')) {{
       h.classList.add('delta-header');
       var next = h.nextElementSibling;
       while (next && !['H2','H3'].includes(next.tagName)) {{
@@ -73,7 +73,7 @@ document.addEventListener('DOMContentLoaded', function() {{
     else if (/^\\s*P2[^a-z0-9]/i.test(t)) li.classList.add('p2-item');
   }});
   document.querySelectorAll('h2,h3').forEach(function(h) {{
-    if (h.textContent.includes('What Changed') || h.textContent.includes('\ud83d\udd04')) {{
+    if (h.textContent.includes('What Changed') || h.textContent.includes('🔄')) {{
       h.classList.add('delta-header');
       var next = h.nextElementSibling;
       while (next && !['H2','H3'].includes(next.tagName)) {{
