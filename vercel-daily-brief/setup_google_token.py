@@ -43,7 +43,7 @@ except FileNotFoundError:
 
 print("Opening browser for Google OAuth…")
 flow = InstalledAppFlow.from_client_secrets_file(SECRETS_FILE, SCOPES)
-creds = flow.run_local_server(port=0, prompt="consent", access_type="offline")
+creds = flow.run_local_server(port=8080, prompt="consent", access_type="offline")
 
 print("\n" + "=" * 60)
 print("SUCCESS! Add these to your Vercel environment variables:")
