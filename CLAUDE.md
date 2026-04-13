@@ -48,9 +48,17 @@ Treat these senders as VIPs:
 - hoi@sea.com
 - fengc@sea.com
 
+## Important topics
+Treat these topics as Important Topics:
+- Swarm or any emails/meetings related to OSP
+- SIP 
+- BPM or any emails related by system, BPM
+- CB FP&A
+
 ## Email triage rules
 An email is more likely to matter when one or more of these are true:
-- It is from Ian or a VIP sender.
+- It is from Ian or a VIP sender 
+- It is related to important topics
 - The subject contains `for your action` or the word `action`.
 - Shuning is addressed directly, such as:
   - `Hi Shuning`
