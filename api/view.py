@@ -2,14 +2,20 @@
 /api/view?date=YYYY-MM-DD  —  Render a stored daily briefing as a styled HTML page.
 
 Fetches the markdown from Upstash Redis and returns a self-contained HTML document.
-No authentication — the link is only shared via the daily email.
+Requires a valid Google session cookie (set by /api/auth).
+Only shuning.wang@shopee.com and shuning2016@gmail.com are authorised.
 """
 
 from http.server import BaseHTTPRequestHandler
 import os
+import sys
+import urllib.parse
 from datetime import datetime
 from urllib.parse import parse_qs, urlparse
 from zoneinfo import ZoneInfo
+
+sys.path.insert(0, os.path.dirname(__file__))
+from _session import COOKIE_NAME, parse_cookies, verify_cookie
 
 import markdown as md_lib
 from upstash_redis import Redis
@@ -293,6 +299,19 @@ def _not_found(date_str: str) -> str:
 
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
+        # ── Session check ─────────────────────────────────────────────────
+        cookie_header = self.headers.get("Cookie", "")
+        cookies = parse_cookies(cookie_header)
+        session_email = verify_cookie(cookies.get(COOKIE_NAME, ""))
+        if not session_email:
+            next_url = urllib.parse.quote(self.path, safe="")
+            self.send_response(302)
+            self.send_header("Location", f"/api/auth?next={next_url}")
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+            return
+        # ── End session check ─────────────────────────────────────────────
+
         parsed = urlparse(self.path)
         params = parse_qs(parsed.query)
         date_str = params.get("date", [datetime.now(SGT).strftime("%Y-%m-%d")])[0]
