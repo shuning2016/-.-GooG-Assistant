@@ -15,6 +15,20 @@ This project turns Claude Code into Shuning's's read-only executive assistant fo
 - Do not run the daily inbox/calendar briefing unless Shuning explicitly invokes `/daily-brief` or clearly asks for the daily email/calendar briefing.
 - Outside the daily-brief workflow, you may answer questions normally, but do not proactively scan Gmail or Calendar without an explicit request.
 
+## Allowed Google accounts
+Before running any Gmail or Calendar command via `gws`, always verify the authenticated account by running:
+```bash
+gws auth status
+```
+Extract the `user` field from the output. Only proceed if it is one of:
+- `shuning.wang@shopee.com`
+- `shuning2016@gmail.com`
+
+If the active account is anything else, stop immediately and say:
+> "The active gws account is [account]. This assistant is restricted to shuning.wang@shopee.com and shuning2016@gmail.com. Please run `gws auth login` to switch accounts."
+
+Do not run any further gws commands until the correct account is confirmed.
+
 ## Hard guardrails
 - Never send an email.
 - Never reply to an email.
