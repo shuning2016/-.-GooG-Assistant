@@ -455,25 +455,6 @@ def run_briefing() -> tuple[str, str, str]:
     drive_files = fetch_drive(drive_svc, since)
     seatalk_msgs = fetch_seatalk_snapshot(today_str)  # None if snapshot not pushed
 
-    # ── Debug: store calendar split info in Redis for 1 hour ──────────────────
-    try:
-        today_ev, tmrw_ev = _split_events_by_day(events, today_str)
-        debug_info = {
-            "now_sgt": now_sgt.isoformat(),
-            "today_str": today_str,
-            "raw_event_starts": [
-                {"start": ev.get("start", ""), "summary": ev.get("summary", "")[:60]}
-                for ev in events
-            ],
-            "today_count": len(today_ev),
-            "tomorrow_count": len(tmrw_ev),
-        }
-        r = Redis(url=os.environ["UPSTASH_REDIS_REST_URL"], token=os.environ["UPSTASH_REDIS_REST_TOKEN"])
-        r.set("debug:calendar-split", json.dumps(debug_info, default=str), ex=3600)
-    except Exception:
-        pass
-    # ─────────────────────────────────────────────────────────────────────────
-
     briefing = generate_briefing(emails, events, drive_files, today_str, window, seatalk_msgs)
     store(today_str, briefing)
 
