@@ -55,38 +55,49 @@ Recommended checkpoint structure:
 ## Step 2: collect email signals
 Review new and newly relevant email activity since the effective lower bound.
 
-Prioritize these messages and threads:
-- From `shuning.wang@shopee.com`
-- From any VIP sender listed in the project `CLAUDE.md`
-- Subject contains `for your action` or the word `action`
-- Shuning appears to be addressed directly
-- Shuning is in `To:` rather than only `Cc:`
-- Direct question or explicit ask
-- Mentions deadlines, contracts, travel, interviews, meetings, approvals, confirmations, escalations, or blockers
-- Likely needs a reply within the next 2 days
+### Key domains to match
+Any email related to one or more of these domains is treated as domain-relevant regardless of sender:
+- **Swarm / OSP**
+- **SIP**
+- **FP&A** (financial planning and analysis)
+- **Budget** (planning, review, allocation)
+- **BPM** (business process management, system/BPM workflows)
 
-Treat these as direct-address clues:
-- `Hi Shuning`
-- `Shuning,`
-- `Hey Shuning`
-- direct question phrasing
-- explicit ownership language such as `can you`, `please`, `need you to`, `for your review`, `for your input`, `for your action`
+### Classification rules — apply in order
 
-Suppress these unless they introduce a real new action or risk:
-- newsletters
-- promotions
-- receipts
-- automated alerts
-- recurring daily digests
-- repeated daily reports
-- routine calendar notifications
+**P0 (super important)** — flag when any of these are true:
+- The email is from or to a VIP sender **and** total recipients < 10
+- The subject or body is related to a key domain
+- Subject contains `for your action` or the word `action` **and** Shuning is in `To:`
+- A direct ask, deadline, escalation, or blocker is present **and** a VIP is involved
 
-Email handling rules:
+**P1 (important)** — flag when any of these are true (and not P0):
+- From a VIP sender but total recipients ≥ 10
+- Shuning is in `To:` and the email asks a direct question or assigns an action
+- Shuning is addressed directly (`Hi Shuning`, `Shuning,`, `Hey Shuning`)
+- Mentions a deadline, contract, travel, interview, meeting, approval, confirmation, escalation, or blocker — but not domain-related (which would be P0)
+- Thread likely needs a reply within 2 days
+- Materially changes risk, ownership, timing, or expectations
+
+**P2 (lower priority)** — flag when all of these are true:
+- Not related to any key domain
+- No VIP in recipient list with fewer than 10 total recipients
+- No direct ask or deadline
+- Informational, Cc-only, or general announcement
+
+### Suppression — exclude entirely
+- Newsletters, promotions, receipts
+- Obvious automated alerts
+- Recurring daily digests or repeated daily reports
+- Routine calendar notifications with no new action
+
+### Email handling rules
 - Dedupe threads so the briefing is not noisy.
 - Use thread context when the latest message alone is ambiguous.
-- If needed, check whether Shuning has already replied before labeling something as awaiting reply.
+- Check whether Shuning has already replied before labeling something as awaiting reply.
 - If reply status cannot be confirmed, say `reply status unclear` rather than guessing.
 - Prefer concrete output: sender, subject, due date, requested action, and why it matters.
+- Report all emails in the order: P0 first, then P1, then P2.
 
 ## Step 3: collect Google Drive signals
 Review Google Drive files modified within the effective review window using the `gws` CLI.
@@ -132,25 +143,40 @@ A file is flagged as important if any of these are true:
 ## Step 4: collect calendar signals
 Review today's work calendar and also tomorrow's first meeting.
 
-Always include:
-- today's meetings
-- all-day events
-- after-hours meetings
-- overlapping meetings
-- tomorrow's first meeting if prep today would help
+### Key domains to match
+Same as Step 2. A meeting is domain-relevant when its title or description relates to: Swarm/OSP, SIP, FP&A, Budget, or BPM.
 
-A meeting is important when any of these are true:
-- organizer or attendee includes Shuning or a VIP
-- external attendees are involved
-- the title or description signals a review, decision, escalation, interview, travel, contract, hiring, or action item
-- Shuning is likely expected to present, decide, approve, or provide an update
-- supporting material, deck, pre-read, or prep is implied
+### Classification rules — apply in order
 
-Prep expectations:
-- default important-meeting prep window: 30 minutes
-- high-stakes meeting prep window: 60 minutes
-- flag overlaps explicitly
-- do not flag transit or location buffers
+**P0 (super important)** — flag when any of these are true:
+- A VIP is the organizer or an attendee **and** total attendees < 10
+- The title or description is related to a key domain
+
+**P1 (important)** — flag when any of these are true (and not P0):
+- Organizer or attendee includes Shuning or a VIP (10 or more attendees)
+- External participants are involved
+- The title or description signals a decision, review, escalation, interview, travel, contract, hiring, or action item
+- Shuning is expected to present, decide, approve, or provide an update
+- A pre-read, deck, document, or deliverable appears necessary
+- **Shuning has accepted the meeting invite** — always check RSVP/acceptance status; note explicitly if Shuning declined or has not responded, as this affects whether prep is needed
+
+**P2 (lower priority)** — flag when any of these are true:
+- Total attendees > 30, even if a VIP is present
+- Not related to any key domain and does not meet P0 or P1 criteria
+- Shuning is only optionally invited with no expected contribution
+
+### Always include in the review
+- Today's meetings on the work calendar
+- All-day events
+- After-hours meetings
+- Overlapping meetings (flag explicitly)
+- Tomorrow's first meeting if prep today would help
+
+### Prep expectations
+- Default important-meeting prep window: 30 minutes before
+- High-stakes meeting prep window: 60 minutes before
+- Do not flag transit or location buffers
+- Report all meetings in order: P0 first, then P1, then P2.
 
 ## Step 5: fetch and analyze meeting pre-reads
 For each important meeting identified in Step 4, search the last 24 hours of email for pre-read materials — typically emails with attachments or Google Drive links sent ahead of the meeting.
@@ -222,24 +248,31 @@ For each important meeting where a pre-read was found:
 - If no pre-read is found for a meeting, note: `No pre-read found (past 24 h)`
 
 ## Step 6: classify by priority
-Use this default rubric.
+Apply these rules to both emails and meetings. Report all items in sequence: P0 first, then P1, then P2.
 
-### P0
-- Due today
-- Needs a reply today
+### P0 — super important (act today)
+- Email or meeting involves a VIP with fewer than 10 total recipients/attendees
+- Email or meeting is related to a key domain (Swarm/OSP, SIP, FP&A, Budget, BPM)
+- Due today or needs a reply today
 - Meeting today needs prep soon
 - Boss or VIP direct ask with time sensitivity
 - Travel, interview, contract, approval, or escalation issue that can block progress
 - Calendar conflict affecting today's execution
 
-### P1
-- Likely needs a reply within 48 hours
+### P1 — important (handle within 48 hours)
+- Email from a VIP but total recipients ≥ 10
+- Shuning is in `To:` with a direct ask or action not covered by P0
+- Shuning addressed directly and email is not domain-related
+- Mentions deadline, contract, travel, interview, approval, or escalation — but not domain-related (which would be P0)
+- Thread likely needs a reply within 2 days
 - Important meeting tomorrow that needs prep today
 - Follow-up with meaningful downside if delayed
 - Medium-term risk, dependency, or unresolved owner issue
+- Meeting where Shuning has accepted the invite — always note RSVP status; flag explicitly if declined or no response
 
-### P2
-- Useful to track but not urgent
+### P2 — lower priority (track, can wait)
+- Meeting has more than 30 attendees, even if a VIP is present
+- Email or meeting is not related to any key domain and has no direct ask
 - Informational updates with mild action value
 - Lower-risk follow-up
 - Items that can wait beyond the next 2 days
