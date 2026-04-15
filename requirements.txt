@@ -5,3 +5,5 @@ google-api-python-client>=2.100.0
 markdown>=3.5.0
 upstash-redis>=1.1.0
 tzdata>=2024.1
+# SeaTalk CDP reader (local only — not used by Vercel functions)
+websocket-client>=1.0.0
