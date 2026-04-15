@@ -6,10 +6,11 @@
     }
   ],
   "functions": {
-    "api/cron.py":    { "maxDuration": 300 },
-    "api/trigger.py": { "maxDuration": 300 },
-    "api/view.py":    { "maxDuration": 30 },
-    "api/auth.py":    { "maxDuration": 30 }
+    "api/cron.py":           { "maxDuration": 300 },
+    "api/trigger.py":        { "maxDuration": 300 },
+    "api/view.py":           { "maxDuration": 30 },
+    "api/auth.py":           { "maxDuration": 30 },
+    "api/seatalk_check.py":  { "maxDuration": 60 }
   },
   "rewrites": [
     { "source": "/", "destination": "/api/view" }

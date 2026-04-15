@@ -24,7 +24,7 @@ from googleapiclient.discovery import build
 from upstash_redis import Redis
 
 sys.path.insert(0, os.path.dirname(__file__))
-from _seatalk import fetch_seatalk_snapshot, format_seatalk_payload, SEATALK_BRIEF_PROMPT
+from _seatalk import fetch_seatalk_snapshot, format_seatalk_payload
 
 SGT = ZoneInfo("Asia/Singapore")
 RECIPIENT = "Shuning.wang@shopee.com"
@@ -155,16 +155,16 @@ User context:
 Produce a crisp, action-oriented daily briefing using this exact structure:
 
 ## Executive Brief
-2–4 sentences covering: what matters most today, biggest risk, most critical reply/prep.
-If SeaTalk has P0 items, mention them here.
+2–4 sentences: what matters most today, biggest risk, most critical reply/prep.
+If SeaTalk has P0 items, surface them here.
 
 ## Prioritized Checklist
 Checkboxes grouped under **P0** (urgent today), **P1** (important soon), **P2** (can wait).
 Each item phrased as a concrete action. Include SeaTalk action items here too.
 
 ## Today's Schedule
-Markdown table — columns: Time (SGT) | Meeting | Why it matters | Prep / notes
-Flag overlaps and after-hours events explicitly.
+Markdown table — columns: Time (SGT) | Meeting | Priority | Prep / notes
+Flag overlaps, all-day events, and after-hours meetings explicitly.
 
 ## Google Drive Updates
 (Only include if relevant files found.) Each file as a clickable markdown link.
@@ -175,30 +175,82 @@ Summarise internal chat messages. Use the sub-structure:
 **P0 (act today)** | **P1 (handle soon)** | **P2 (FYI)**
 Each bullet: [DM/Group] Sender — what was said — suggested action.
 If no SeaTalk snapshot was available, say: "SeaTalk snapshot not available for this run."
-Suppress: bot alerts, automated reports, reaction-only messages.
+Suppress: bot alerts, automated reports, reaction-only messages, join/leave notifications.
 
 ## What to Reply To
 Bullets: Sender — Subject/Channel — suggested action or talking point.
-(Cover both email and SeaTalk DMs here.)
+Cover both email and SeaTalk DMs.
 
 ## Risks / Watchouts
 Short bullets. Distinguish facts from inference.
 
 ## Suggested Priorities
-Numbered ordered list.
+Numbered ordered list of concrete next steps.
 
-Priority rubric:
-- P0: due today, VIP direct ask, blocks progress, needs reply today, meeting prep now,
-      SeaTalk @mention or DM from VIP, key domain topic (Swarm/OSP/SIP/FP&A/Budget/BPM)
-- P1: reply within 48 h, important meeting tomorrow needing today's prep, meaningful downside if
-      delayed, SeaTalk DM from non-VIP, SeaTalk thread where Shuning posted
-- P2: informational, lower-risk, can wait 2+ days
+─── EMAIL TRIAGE RULES ───────────────────────────────────────────────────────────────
 
-Email triage — flag when: VIP sender; "for your action" in subject; directly addressed
-(Hi Shuning / Shuning,); in To: not only Cc:; direct question or explicit ask;
-mentions deadline, contract, travel, interview, approval, escalation, blocker.
+P0 (super important — act today). An email is P0 when ANY of these are true:
+  • From or to a VIP AND total recipients < 10
+  • Subject or body related to a key domain (Swarm/OSP, SIP, FP&A, Budget, BPM)
+  • Subject contains "for your action" or the word "action" AND Shuning is in To:
+  • A direct ask, deadline, escalation, or blocker is present AND a VIP is involved
 
-Suppress: newsletters, promotions, receipts, automated alerts, recurring digests.
+P1 (important — handle within 48 h). An email is P1 when ANY of these are true:
+  • From a VIP sender but total recipients ≥ 10 (large-group VIP message)
+  • Shuning is in To: (not only Cc:) AND email asks a direct question or assigns an action
+  • Shuning is addressed directly (Hi Shuning / Shuning, / Hey Shuning) and not already P0
+  • Mentions deadline, contract, travel, interview, meeting, approval, confirmation,
+    escalation, or blocker — and is NOT related to a key domain (which would make it P0)
+  • Thread appears to require a reply within the next 2 days
+  • Email materially changes risk, ownership, timing, or expectations
+
+P2 (lower priority — track but not urgent). An email is P2 when ALL are true:
+  • Not related to any key domain
+  • No VIP in the recipient list with fewer than 10 total recipients
+  • No direct ask or deadline
+  • Informational, Cc-only update, or general announcement
+
+Suppress entirely (omit from briefing unless they contain a new risk, direct ask, or deadline):
+  newsletters, promotions, receipts, obvious automated alerts, recurring daily digests or
+  repeated daily reports, routine calendar/system notifications.
+
+─── CALENDAR TRIAGE RULES ───────────────────────────────────────────────────────────
+
+P0 meeting when ANY are true:
+  • A VIP is organizer or attendee AND total attendees < 10
+  • Title or description is related to a key domain
+
+P1 meeting when ANY are true (and not already P0):
+  • VIP organizer/attendee with ≥ 10 total attendees
+  • External participants are involved
+  • Title or description signals a decision, review, escalation, interview, travel,
+    contract, hiring, or action item
+  • Shuning is expected to present, decide, approve, or provide an update
+  • A pre-read, deck, document, or deliverable appears necessary
+  • RSVP: always check Shuning's response status — if he declined or has NOT responded,
+    note this alongside the priority (e.g. "[not responded]", "[declined]")
+
+P2 meeting when ANY are true:
+  • Total attendees > 30, even if a VIP is present
+  • Not related to any key domain and does not meet P0/P1 criteria
+  • Shuning is only Cc'd or optionally invited with no expected contribution
+
+Always flag:
+  • All-day events
+  • After-hours meetings (outside 09:30–19:30 SGT)
+  • Overlapping meetings (call out both titles and the overlap window)
+  • Tomorrow's first meeting if preparation today would be useful
+
+─── SEATALK TRIAGE RULES ────────────────────────────────────────────────────────────
+
+P0: DM from VIP; @mention of Shuning in any group; key domain topic; direct ask or
+    action item addressed to Shuning; escalation, blocker, or urgent issue.
+P1: DM from non-VIP; reply in a thread where Shuning posted; message about a deadline,
+    meeting, or deliverable; group message directly addressing Shuning's area of ownership.
+P2: general FYI; no action required from Shuning.
+Suppress: bot alerts, automated reports, reaction-only messages, join/leave notifications.
+
+─────────────────────────────────────────────────────────────────────────────────────
 
 Use Singapore time (SGT) for all timestamps. Be concise — lead with the answer.\
 """
