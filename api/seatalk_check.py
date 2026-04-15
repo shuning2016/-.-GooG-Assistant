@@ -27,7 +27,6 @@ Requires a valid Google session cookie (set by /api/auth).
 import json
 import os
 import sys
-import urllib.parse
 from datetime import datetime
 from urllib.parse import parse_qs, urlparse
 from zoneinfo import ZoneInfo
