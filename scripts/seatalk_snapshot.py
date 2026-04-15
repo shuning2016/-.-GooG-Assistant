@@ -59,10 +59,8 @@ def read_messages(hours: int) -> list[dict]:
             "Set SEATALK_SKILL_ROOT to the use-seatalk repo path."
         )
 
-    out_file = f"/tmp/seatalk-snapshot-{datetime.now(SGT).strftime('%Y-%m-%d')}.json"
-
     result = subprocess.run(
-        [sys.executable, reader, "--last-hours", str(hours), "--output", out_file],
+        [sys.executable, reader, "--last-hours", str(hours)],
         capture_output=True,
         text=True,
         timeout=90,
@@ -72,8 +70,7 @@ def read_messages(hours: int) -> list[dict]:
             f"CDP reader exited {result.returncode}:\n{result.stderr.strip()}"
         )
 
-    with open(out_file) as f:
-        data = json.load(f)
+    data = json.loads(result.stdout)
 
     # redux_related_messages.py returns {"messages": [...], "window": {...}, ...}
     if isinstance(data, list):
