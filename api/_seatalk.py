@@ -36,14 +36,26 @@ Use this structure:
 **P2 (FYI)**
 - Brief bullets only
 
-Rules:
-- P0: direct message from VIP; @mention of Shuning; key domain topic; direct ask to Shuning
-- P1: DM from non-VIP; thread reply where Shuning posted; deadline/approval/meeting message
-- P2: general group messages with no action required
-- Suppress: bot alerts, automated reports, reaction-only messages, join/leave notifications
-- Be concise. Lead with facts. Distinguish inference from fact.
-- Use Singapore time (SGT) for all timestamps.
-- If no messages: output a single line "No SeaTalk activity in this window."\
+Priority rubric:
+P0 — when ANY of these are true:
+  • Direct private message from a VIP (jianghong.liu, hoi, fengc) — regardless of group size
+  • Message @mentions Shuning (@shuning.wang / @Shuning) in any group
+  • Message is related to a key domain (Swarm/OSP, SIP, FP&A, Budget, BPM)
+  • Any direct ask or action item explicitly addressed to Shuning
+  • Escalation, blocker, or urgent issue
+
+P1 — when ANY of these are true (and not already P0):
+  • Direct private message from a non-VIP colleague
+  • Reply in a thread where Shuning previously posted
+  • Message about a deadline, meeting, or deliverable
+  • Group message directly addressing Shuning's area of ownership
+
+P2 — informational, general group message, no action required from Shuning.
+
+Suppress: bot alerts, automated reports, reaction-only messages, join/leave notifications.
+Be concise. Lead with facts. Distinguish inference from fact.
+Use Singapore time (SGT) for all timestamps.
+If no messages: output a single line "No SeaTalk activity in this window."\
 """
 
 SEATALK_SUMMARY_PROMPT = """\
@@ -72,11 +84,22 @@ Produce a standalone SeaTalk summary email using this exact structure:
 - [ ] Concrete next steps, with owner and deadline if mentioned
 
 Priority rubric:
-- P0: direct message from VIP; @mention of Shuning; key domain; direct ask; escalation/blocker
-- P1: DM from non-VIP; thread where Shuning posted; deadline/meeting/approval message
-- P2: general group, no action needed
-Suppress: bot alerts, automated reports, reactions, join/leave notifications.
+P0 — when ANY of these are true:
+  • Direct private message from a VIP (jianghong.liu, hoi, fengc) — regardless of group size
+  • Message @mentions Shuning (@shuning.wang / @Shuning) in any group
+  • Message is related to a key domain (Swarm/OSP, SIP, FP&A, Budget, BPM)
+  • Any direct ask or action item explicitly addressed to Shuning
+  • Escalation, blocker, or urgent issue
 
+P1 — when ANY of these are true (and not already P0):
+  • Direct private message from a non-VIP colleague
+  • Reply in a thread where Shuning previously posted
+  • Message about a deadline, meeting, or deliverable
+  • Group message directly addressing Shuning's area of ownership
+
+P2 — informational, general group message, no action required.
+
+Suppress: bot alerts, automated reports, reaction-only messages, join/leave notifications.
 Be concise. Lead with the answer. Use Singapore time (SGT).
 If no relevant messages: say so plainly — do not pad with filler.\
 """
