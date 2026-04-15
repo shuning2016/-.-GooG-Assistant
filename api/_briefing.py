@@ -81,13 +81,14 @@ def fetch_gmail(service, since: datetime) -> list[dict]:
 
 
 def fetch_calendar(service, now_sgt: datetime) -> list[dict]:
-    """Return today's + tomorrow's calendar events."""
-    day_start = now_sgt.replace(hour=0, minute=0, second=0, microsecond=0)
-    day_end = day_start + timedelta(days=2)
+    """Return events from now through end of tomorrow (SGT)."""
+    tomorrow_end = (now_sgt + timedelta(days=1)).replace(
+        hour=23, minute=59, second=59, microsecond=0
+    )
     result = service.events().list(
         calendarId="primary",
-        timeMin=day_start.isoformat(),
-        timeMax=day_end.isoformat(),
+        timeMin=now_sgt.isoformat(),
+        timeMax=tomorrow_end.isoformat(),
         singleEvents=True,
         orderBy="startTime",
         maxResults=25,
