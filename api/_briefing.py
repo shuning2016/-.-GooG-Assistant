@@ -7,7 +7,6 @@ Python serverless runtime.
 """
 
 import json
-import logging
 import os
 import sys
 import smtplib
