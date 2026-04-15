@@ -62,30 +62,49 @@ Treat these senders as VIPs:
 - hoi@sea.com
 - fengc@sea.com
 
+## Key domains
+These are the five key domains. Any email or meeting that touches one or more of these domains is treated as domain-relevant:
+- **Swarm** — anything related to Swarm or OSP
+- **SIP** — anything related to SIP
+- **FP&A** — anything related to FP&A, financial planning, or financial analysis
+- **Budget** — anything related to budget planning, budget review, or budget allocation
+- **BPM** — anything related to BPM, business process management, or system/BPM workflows
+
 ## Important topics
-Treat these topics as Important Topics:
+Treat these topics as Important Topics (same as key domains above):
 - Swarm or any emails/meetings related to OSP
-- SIP 
-- BPM or any emails related by system, BPM
-- CB FP&A
+- SIP
+- FP&A or financial planning and analysis
+- Budget planning, review, or allocation
+- BPM or any emails related to system, BPM
 
 ## Email triage rules
-An email is more likely to matter when one or more of these are true:
-- It is from Ian or a VIP sender 
-- It is related to important topics
-- The subject contains `for your action` or the word `action`.
-- Shuning is addressed directly, such as:
-  - `Hi Shuning`
-  - `Shuning,`
-  - `Hey Shuning`
-- Shuning is in `To:` rather than only `Cc:`.
-- The email asks a direct question.
-- The email assigns Shuning an action.
-- The email mentions a deadline, contract, travel, interview, meeting, approval, confirmation, escalation, or blocker.
-- The thread appears to require a reply within the next 2 days.
-- The email materially changes risk, ownership, timing, or expectations.
+Apply the key domains list and VIP list to classify every email.
 
-## Email exclusions
+### Super important (P0) — escalate immediately
+An email is P0 when **any** of these are true:
+- The email is from or to a VIP sender **and** the total number of recipients is fewer than 10
+- The subject or body is related to a key domain (Swarm/OSP, SIP, FP&A, Budget, BPM)
+- The subject contains `for your action` or the word `action` **and** Shuning is in `To:`
+- A direct ask, deadline, escalation, or blocker is present **and** a VIP is involved
+
+### Important (P1) — handle within 48 hours
+An email is P1 when **any** of these are true:
+- It is from a VIP sender but has 10 or more recipients (large-group VIP message)
+- Shuning is in `To:` rather than only `Cc:` and the email asks a direct question or assigns an action
+- Shuning is addressed directly (`Hi Shuning`, `Shuning,`, `Hey Shuning`) and the email is not P0
+- The email mentions a deadline, contract, travel, interview, meeting, approval, confirmation, escalation, or blocker — and is not related to a key domain (which would make it P0)
+- The thread appears to require a reply within the next 2 days
+- The email materially changes risk, ownership, timing, or expectations
+
+### Lower priority (P2) — track but not urgent
+An email is P2 when **all** of these are true:
+- It is not related to any key domain
+- No VIP is in the recipient list with fewer than 10 total recipients
+- No direct ask or deadline is present
+- It is informational, a Cc-only update, or a general announcement
+
+### Email exclusions — suppress entirely
 Suppress low-value email unless it contains a new risk, direct ask, or deadline:
 - Newsletters
 - Promotions
@@ -95,6 +114,28 @@ Suppress low-value email unless it contains a new risk, direct ask, or deadline:
 - Routine calendar/system notifications with no new action
 
 ## Calendar review rules
+Apply the key domains list and VIP list to classify every meeting.
+
+### Super important meetings (P0)
+A meeting is P0 when **any** of these are true:
+- A VIP is the organizer or an attendee **and** total attendees is fewer than 10
+- The title or description is related to a key domain (Swarm/OSP, SIP, FP&A, Budget, BPM)
+
+### Important meetings (P1)
+A meeting is P1 when **any** of these are true (and not already P0):
+- Organizer or attendee includes Shuning or a VIP (10 or more attendees)
+- External participants are involved
+- The title or description signals a decision, review, escalation, interview, travel, contract, hiring, or action item
+- Shuning is expected to present, decide, approve, or provide an update
+- A pre-read, deck, document, or deliverable appears necessary
+- **Shuning has accepted the meeting invite** — always check RSVP status; if Shuning declined or has not responded, note this alongside the priority
+
+### Lower priority meetings (P2) — track but de-emphasize
+A meeting is P2 when **any** of these are true:
+- Total attendees exceeds 30, even if a VIP is present
+- The meeting is not related to any key domain and does not meet P0 or P1 criteria
+- Shuning is only Cc'd or optionally invited with no expected contribution
+
 For daily briefings, always review:
 - Today's meetings on the work calendar
 - All-day events
@@ -102,12 +143,7 @@ For daily briefings, always review:
 - Overlapping meetings
 - Tomorrow's first meeting when prep today would be useful
 
-Flag a meeting as important when any of these are true:
-- Organized by, or includes, Shuning or a VIP sender
-- External participants are involved
-- The title or description suggests a decision, review, escalation, interview, travel, contract, hiring, or action item
-- Shuning is expected to present, decide, approve, or provide an update
-- A pre-read, deck, document, or deliverable appears necessary
+Flag overlaps explicitly.
 
 ## Prep expectations
 - Default prep lead time: 30 minutes before a normal important meeting
@@ -141,23 +177,28 @@ Every daily briefing should follow this structure:
 
 ## Priority rubric
 Use this by default:
-- P0:
-  - due today
-  - needs a reply today
-  - meeting today needs prep soon
-  - boss or VIP direct ask with time sensitivity
-  - travel, interview, contract, or approval issue that can block progress
-  - calendar conflict affecting today's execution
-- P1:
-  - likely reply needed within 48 hours
-  - important meeting tomorrow needing prep today
-  - follow-up with meaningful downside if delayed
-  - medium-term risk or dependency that should be handled soon
-- P2:
-  - informational but still worth tracking
-  - optional prep
-  - lower-risk follow-up
-  - items that can wait beyond the next 2 days
+- P0 (super important — act today):
+  - Email or meeting involves a VIP with fewer than 10 total recipients/attendees
+  - Email or meeting is related to a key domain (Swarm/OSP, SIP, FP&A, Budget, BPM)
+  - Due today or needs a reply today
+  - Meeting today needs prep soon
+  - Boss or VIP direct ask with time sensitivity
+  - Travel, interview, contract, or approval issue that can block progress
+  - Calendar conflict affecting today's execution
+- P1 (important — handle within 48 hours):
+  - Meets the P1 email or meeting criteria above (VIP with 10+ recipients, direct ask, deadline, external attendees, accepted invite, etc.)
+  - Likely reply needed within 48 hours
+  - Important meeting tomorrow needing prep today
+  - Follow-up with meaningful downside if delayed
+  - Medium-term risk or dependency that should be handled soon
+  - Shuning accepted the meeting invite (always check RSVP status and note if declined or no response)
+- P2 (lower priority — track but can wait):
+  - Meeting has more than 30 attendees, even with a VIP present
+  - Email or meeting is not related to any key domain and has no direct ask
+  - Informational but still worth tracking
+  - Optional prep
+  - Lower-risk follow-up
+  - Items that can wait beyond the next 2 days
 
 ## State and reporting
 - Use `.claude/state/daily-brief.json` as the checkpoint file for the daily brief workflow.
