@@ -445,8 +445,6 @@ def run_briefing() -> tuple[str, str, str]:
         f"→ {now_sgt.strftime('%Y-%m-%d %H:%M SGT')}"
     )
 
-    print(f"[DEBUG] now_sgt={now_sgt.isoformat()}  today_str={today_str}")
-
     creds = google_creds()
     gmail_svc = build("gmail", "v1", credentials=creds)
     cal_svc = build("calendar", "v3", credentials=creds)
@@ -457,12 +455,24 @@ def run_briefing() -> tuple[str, str, str]:
     drive_files = fetch_drive(drive_svc, since)
     seatalk_msgs = fetch_seatalk_snapshot(today_str)  # None if snapshot not pushed
 
-    print(f"[DEBUG] raw events ({len(events)}):")
-    for ev in events:
-        print(f"  start={ev.get('start','')}  summary={ev.get('summary','')[:50]}")
-
-    today_events, tomorrow_events = _split_events_by_day(events, today_str)
-    print(f"[DEBUG] today_events={len(today_events)}  tomorrow_events={len(tomorrow_events)}")
+    # ── Debug: store calendar split info in Redis for 1 hour ──────────────────
+    try:
+        today_ev, tmrw_ev = _split_events_by_day(events, today_str)
+        debug_info = {
+            "now_sgt": now_sgt.isoformat(),
+            "today_str": today_str,
+            "raw_event_starts": [
+                {"start": ev.get("start", ""), "summary": ev.get("summary", "")[:60]}
+                for ev in events
+            ],
+            "today_count": len(today_ev),
+            "tomorrow_count": len(tmrw_ev),
+        }
+        r = Redis(url=os.environ["UPSTASH_REDIS_REST_URL"], token=os.environ["UPSTASH_REDIS_REST_TOKEN"])
+        r.set("debug:calendar-split", json.dumps(debug_info, default=str), ex=3600)
+    except Exception:
+        pass
+    # ─────────────────────────────────────────────────────────────────────────
 
     briefing = generate_briefing(emails, events, drive_files, today_str, window, seatalk_msgs)
     store(today_str, briefing)
