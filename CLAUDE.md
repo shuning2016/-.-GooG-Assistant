@@ -45,6 +45,20 @@ Do not run any further gws commands until the correct account is confirmed.
 - Prefer thread-level understanding over isolated message snippets when a reply, deadline, or conflict depends on context.
 - Use local file access for project state and saved briefings.
 
+## SeaTalk integration
+SeaTalk is a third information source alongside Gmail and Calendar. Full instructions, triage
+rules, and scheduling details are in **[SEATALK.md](SEATALK.md)** — read that file before
+processing any SeaTalk data.
+
+Key points:
+- Use the `use-seatalk` skill (`Skill(use-seatalk)`) to read SeaTalk messages via CDP.
+- The 8am daily brief includes a **SeaTalk Activity** section if a snapshot was pushed by
+  `scripts/seatalk_snapshot.py` at 07:50 SGT; otherwise it notes the snapshot is unavailable.
+- Standalone SeaTalk summaries run locally at 10:00, 12:00, 15:00, and 19:00 SGT via
+  `scripts/seatalk_summary.py` and are emailed to Shuning.wang@shopee.com.
+- Apply SeaTalk triage rules (P0/P1/P2) from SEATALK.md when classifying messages.
+- SeaTalk is **read-only by default**. Never send messages unless explicitly asked.
+
 ## User context
 - User name: Shuning
 - Timezone: Asia/Singapore

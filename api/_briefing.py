@@ -9,6 +9,7 @@ Python serverless runtime.
 import json
 import logging
 import os
+import sys
 import smtplib
 from datetime import datetime, timedelta
 from email.mime.multipart import MIMEMultipart
@@ -21,6 +22,9 @@ from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from upstash_redis import Redis
+
+sys.path.insert(0, os.path.dirname(__file__))
+from _seatalk import fetch_seatalk_snapshot, format_seatalk_payload, SEATALK_BRIEF_PROMPT
 
 SGT = ZoneInfo("Asia/Singapore")
 RECIPIENT = "Shuning.wang@shopee.com"
@@ -146,15 +150,17 @@ User context:
 - Name: Shuning Wang  |  Email: shuning.wang@shopee.com
 - Timezone: Asia/Singapore  |  Working hours: 09:30–19:30 SGT
 - VIP senders: jianghong.liu@shopee.com, hoi@sea.com, fengc@sea.com
+- Key domains: Swarm/OSP, SIP, FP&A, Budget, BPM
 
 Produce a crisp, action-oriented daily briefing using this exact structure:
 
 ## Executive Brief
 2–4 sentences covering: what matters most today, biggest risk, most critical reply/prep.
+If SeaTalk has P0 items, mention them here.
 
 ## Prioritized Checklist
 Checkboxes grouped under **P0** (urgent today), **P1** (important soon), **P2** (can wait).
-Each item phrased as a concrete action, not an observation.
+Each item phrased as a concrete action. Include SeaTalk action items here too.
 
 ## Today's Schedule
 Markdown table — columns: Time (SGT) | Meeting | Why it matters | Prep / notes
@@ -164,8 +170,16 @@ Flag overlaps and after-hours events explicitly.
 (Only include if relevant files found.) Each file as a clickable markdown link.
 Columns: File | Owner | Changed | Why flagged
 
+## SeaTalk Activity
+Summarise internal chat messages. Use the sub-structure:
+**P0 (act today)** | **P1 (handle soon)** | **P2 (FYI)**
+Each bullet: [DM/Group] Sender — what was said — suggested action.
+If no SeaTalk snapshot was available, say: "SeaTalk snapshot not available for this run."
+Suppress: bot alerts, automated reports, reaction-only messages.
+
 ## What to Reply To
-Bullets: Sender — Subject — suggested action or talking point.
+Bullets: Sender — Subject/Channel — suggested action or talking point.
+(Cover both email and SeaTalk DMs here.)
 
 ## Risks / Watchouts
 Short bullets. Distinguish facts from inference.
@@ -174,8 +188,10 @@ Short bullets. Distinguish facts from inference.
 Numbered ordered list.
 
 Priority rubric:
-- P0: due today, VIP direct ask, blocks progress, needs reply today, meeting prep now
-- P1: reply within 48 h, important meeting tomorrow needing today's prep, meaningful downside if delayed
+- P0: due today, VIP direct ask, blocks progress, needs reply today, meeting prep now,
+      SeaTalk @mention or DM from VIP, key domain topic (Swarm/OSP/SIP/FP&A/Budget/BPM)
+- P1: reply within 48 h, important meeting tomorrow needing today's prep, meaningful downside if
+      delayed, SeaTalk DM from non-VIP, SeaTalk thread where Shuning posted
 - P2: informational, lower-risk, can wait 2+ days
 
 Email triage — flag when: VIP sender; "for your action" in subject; directly addressed
@@ -188,8 +204,21 @@ Use Singapore time (SGT) for all timestamps. Be concise — lead with the answer
 """
 
 
-def generate_briefing(emails: list, events: list, drive_files: list, today: str, window: str) -> str:
+def generate_briefing(
+    emails: list,
+    events: list,
+    drive_files: list,
+    today: str,
+    window: str,
+    seatalk_msgs: list | None = None,
+) -> str:
     client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+
+    seatalk_section = (
+        format_seatalk_payload(seatalk_msgs, window)
+        if seatalk_msgs is not None
+        else "SEATALK: Snapshot not available for this run (seatalk_snapshot.py may not have run).\n"
+    )
 
     payload = (
         f"REVIEW WINDOW: {window}\n"
@@ -199,7 +228,9 @@ def generate_briefing(emails: list, events: list, drive_files: list, today: str,
         f"=== CALENDAR EVENTS ===\n"
         f"{json.dumps(events, indent=2, default=str)}\n\n"
         f"=== GOOGLE DRIVE CHANGES ({len(drive_files)} files) ===\n"
-        f"{json.dumps(drive_files, indent=2, default=str)}\n"
+        f"{json.dumps(drive_files, indent=2, default=str)}\n\n"
+        f"=== SEATALK MESSAGES ===\n"
+        f"{seatalk_section}"
     )
 
     msg = client.messages.create(
@@ -336,8 +367,9 @@ def run_briefing() -> tuple[str, str, str]:
     emails = fetch_gmail(gmail_svc, since)
     events = fetch_calendar(cal_svc, now_sgt)
     drive_files = fetch_drive(drive_svc, since)
+    seatalk_msgs = fetch_seatalk_snapshot(today_str)  # None if snapshot not pushed
 
-    briefing = generate_briefing(emails, events, drive_files, today_str, window)
+    briefing = generate_briefing(emails, events, drive_files, today_str, window, seatalk_msgs)
     store(today_str, briefing)
 
     base = os.environ.get("VERCEL_URL", "localhost:3000")
