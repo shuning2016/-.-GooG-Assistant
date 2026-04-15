@@ -166,9 +166,11 @@ Markdown table — columns: Time (SGT) | Meeting | Priority | Prep / notes
 Only include events from the "TODAY'S CALENDAR EVENTS" section here.
 Flag overlaps, all-day events, and after-hours meetings explicitly.
 
-## Tomorrow's Schedule (preview)
-If any events appear in "TOMORROW'S CALENDAR EVENTS", list the key ones
-that need prep today. Otherwise omit this section entirely.
+## Tomorrow's Schedule
+Markdown table — columns: Time (SGT) | Meeting | Priority | Prep / notes
+Include ALL events from the "TOMORROW'S CALENDAR EVENTS" section, not just ones needing prep.
+Apply the same priority classification (P0/P1/P2) and RSVP rules as today.
+Omit this section only if TOMORROW'S CALENDAR EVENTS is empty.
 
 ## Google Drive Updates
 (Only include if relevant files found.) Each file as a clickable markdown link.
