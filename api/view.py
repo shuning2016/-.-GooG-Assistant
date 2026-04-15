@@ -241,6 +241,20 @@ def _render_html(briefing_md: str, date_str: str) -> str:
   /* ── Checkboxes ── */
   input[type=checkbox]{{margin-right:7px;accent-color:var(--blue);width:14px;height:14px}}
 
+  /* ── Stale brief banner ── */
+  .stale-banner{{
+    background:#fef3c7;border-bottom:2px solid #d97706;
+    padding:10px 24px;display:flex;align-items:center;gap:10px;
+    font-size:.88rem;color:#92400e;
+  }}
+  .stale-banner strong{{font-weight:700}}
+  .stale-regen{{
+    margin-left:auto;background:#d97706;color:#fff;border:none;
+    border-radius:5px;padding:5px 14px;font-size:.82rem;font-weight:600;
+    cursor:pointer;white-space:nowrap;
+  }}
+  .stale-regen:hover{{opacity:.85}}
+
   /* ── Past meetings ── */
   .past-item{{opacity:0.38;text-decoration:line-through;}}
   .past-item::after{{content:' ✓';font-size:.8em;opacity:.7;text-decoration:none;display:inline;}}
@@ -296,6 +310,12 @@ def _render_html(briefing_md: str, date_str: str) -> str:
     </div>
     <div class="st-body" id="stBody"></div>
   </div>
+</div>
+
+<div id="staleBanner" style="display:none" class="stale-banner">
+  <span>&#9888;</span>
+  <span>This brief is from <strong>{date_str}</strong> — meetings listed may have already passed.</span>
+  {f'<button class="stale-regen" onclick="window.location.href=\'{turl}\'">&#9654; Run today\'s brief</button>' if turl else ''}
 </div>
 
 <div class="page">
@@ -457,25 +477,36 @@ document.addEventListener('DOMContentLoaded', function() {{
   }});
 
   // ── Mark past meetings ────────────────────────────────────────────────────
-  // Get current SGT time (UTC+8)
   var nowUtc = new Date();
   var nowSgt = new Date(nowUtc.getTime() + 8 * 60 * 60 * 1000);
-  var todaySgt = {json.dumps(date_str)};
-  // Only apply on the brief's own date
-  var briefDate = todaySgt;
+  var briefDate = {json.dumps(date_str)};
   var todayYMD = nowSgt.toISOString().slice(0,10);
-  if (briefDate === todayYMD) {{
-    var nowHHMM = nowSgt.getUTCHours() * 60 + nowSgt.getUTCMinutes();
-    // Match times like (14:00), 14:00 SGT, at 14:00, — 18:00 in checklist/table cells
-    var timeRe = /\\b(\\d{{1,2}}):(\\d{{2}})(?:\\s*SGT)?\\b/;
+  var nowMinsSinceMidnight = nowSgt.getUTCHours() * 60 + nowSgt.getUTCMinutes();
+
+  if (briefDate < todayYMD) {{
+    // Brief is from a previous day — show stale banner, mark ALL meeting items past
+    var banner = document.getElementById('staleBanner');
+    if (banner) banner.style.display = 'flex';
+    // Mark any li or td that looks like a meeting/action item
+    var meetingRe = /\\b(\\d{{1,2}}):\\d{{2}}|\\b(attend|review|prep|present|join|check|sync|meeting|brief)\\b/i;
+    document.querySelectorAll('.card li, .card td').forEach(function(el) {{
+      if (meetingRe.test(el.textContent)) el.classList.add('past-item');
+    }});
+  }} else if (briefDate === todayYMD) {{
+    // Today's brief — strike items whose time has passed
+    // Handles 24h (14:30), 12h (2:30pm / 2:30 PM), and SGT suffix
+    var timeRe = /\\b(\\d{{1,2}}):(\\d{{2}})\\s*(am|pm|AM|PM)?(?:\\s*SGT)?\\b/;
     document.querySelectorAll('.card li, .card td').forEach(function(el) {{
       var m = el.textContent.match(timeRe);
-      if (m) {{
-        var itemMins = parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
-        if (itemMins < nowHHMM) {{
-          el.classList.add('past-item');
-        }}
-      }}
+      if (!m) return;
+      var h = parseInt(m[1], 10), mins = parseInt(m[2], 10);
+      var ampm = (m[3] || '').toLowerCase();
+      if (ampm === 'pm' && h !== 12) h += 12;
+      if (ampm === 'am' && h === 12) h = 0;
+      // Treat bare small hours (1–8) with no am/pm as PM (work hours context)
+      if (!ampm && h >= 1 && h <= 8) h += 12;
+      var itemMins = h * 60 + mins;
+      if (itemMins < nowMinsSinceMidnight) el.classList.add('past-item');
     }});
   }}
 }});
