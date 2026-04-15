@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  com.goog-assistant.seatalk-snapshot.plist
+  ─────────────────────────────────────────
+  Runs seatalk_snapshot.py every morning at 07:50 SGT so the Redis snapshot
+  is ready before the Vercel 8am cron fires.
+
+  Install:
+    cp LaunchAgents/com.goog-assistant.seatalk-snapshot.plist ~/Library/LaunchAgents/
+    # Edit WorkingDirectory below to match your actual repo path
+    launchctl load ~/Library/LaunchAgents/com.goog-assistant.seatalk-snapshot.plist
+
+  Uninstall:
+    launchctl unload ~/Library/LaunchAgents/com.goog-assistant.seatalk-snapshot.plist
+    rm ~/Library/LaunchAgents/com.goog-assistant.seatalk-snapshot.plist
+
+  Logs:
+    /tmp/goog-assistant-seatalk-snapshot.log
+    /tmp/goog-assistant-seatalk-snapshot.err
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.goog-assistant.seatalk-snapshot</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/usr/bin/python3</string>
+    <string>/Users/shuning.wang/Library/CloudStorage/GoogleDrive-shuning2016@gmail.com/My Drive/My Projects/Working Efficiency/GooG Assistant/scripts/seatalk_snapshot.py</string>
+    <string>--hours</string>
+    <string>24</string>
+  </array>
+
+  <!-- Run at 07:50 local time (= 07:50 SGT when Mac is in Asia/Singapore) -->
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Hour</key>   <integer>7</integer>
+    <key>Minute</key> <integer>50</integer>
+  </dict>
+
+  <key>WorkingDirectory</key>
+  <string>/Users/shuning.wang/Library/CloudStorage/GoogleDrive-shuning2016@gmail.com/My Drive/My Projects/Working Efficiency/GooG Assistant</string>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <!-- PATH must include the Python that has upstash-redis installed -->
+    <key>PATH</key>
+    <string>/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+  </dict>
+
+  <key>StandardOutPath</key>
+  <string>/tmp/goog-assistant-seatalk-snapshot.log</string>
+
+  <key>StandardErrorPath</key>
+  <string>/tmp/goog-assistant-seatalk-snapshot.err</string>
+
+  <!-- Retry 60s after failure -->
+  <key>ThrottleInterval</key>
+  <integer>60</integer>
+
+  <key>RunAtLoad</key>
+  <false/>
+</dict>
+</plist>
