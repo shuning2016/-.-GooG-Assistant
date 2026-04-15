@@ -45,6 +45,15 @@ def _render_html(briefing_md: str, date_str: str) -> str:
         f'<button class="run-btn" id="runBtn" onclick="runBrief()">&#9654; Run Now</button>'
         if turl else ""
     )
+    # Build the runBrief JS function as a separate variable — nested f-strings
+    # with the same quote type are a syntax error in Python < 3.12 (Vercel runtime).
+    run_brief_fn = (
+        "function runBrief() {\n"
+        "  var btn = document.getElementById('runBtn');\n"
+        "  if (btn) { btn.disabled = true; btn.textContent = 'Running\u2026'; }\n"
+        f"  window.location.href = '{turl}';\n"
+        "}"
+    ) if turl else ""
 
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -421,12 +430,7 @@ function tagPriorities(root) {{
 }}
 
 // ── Run brief ────────────────────────────────────────────────────────────────
-{f"""
-function runBrief() {{
-  var btn = document.getElementById('runBtn');
-  if (btn) {{ btn.disabled = true; btn.textContent = 'Running\u2026'; }}
-  window.location.href = '{turl}';
-}}""" if turl else ""}
+{run_brief_fn}
 
 // ── P0/P1/P2 badge tagging on main briefing ──────────────────────────────────
 document.addEventListener('DOMContentLoaded', function() {{
