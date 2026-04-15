@@ -241,6 +241,10 @@ def _render_html(briefing_md: str, date_str: str) -> str:
   /* ── Checkboxes ── */
   input[type=checkbox]{{margin-right:7px;accent-color:var(--blue);width:14px;height:14px}}
 
+  /* ── Past meetings ── */
+  .past-item{{opacity:0.38;text-decoration:line-through;}}
+  .past-item::after{{content:' ✓';font-size:.8em;opacity:.7;text-decoration:none;display:inline;}}
+
   /* ── Delta / What Changed section ── */
   .delta-header{{
     color:var(--blue) !important;
@@ -451,6 +455,29 @@ document.addEventListener('DOMContentLoaded', function() {{
       }}
     }}
   }});
+
+  // ── Mark past meetings ────────────────────────────────────────────────────
+  // Get current SGT time (UTC+8)
+  var nowUtc = new Date();
+  var nowSgt = new Date(nowUtc.getTime() + 8 * 60 * 60 * 1000);
+  var todaySgt = {json.dumps(date_str)};
+  // Only apply on the brief's own date
+  var briefDate = todaySgt;
+  var todayYMD = nowSgt.toISOString().slice(0,10);
+  if (briefDate === todayYMD) {{
+    var nowHHMM = nowSgt.getUTCHours() * 60 + nowSgt.getUTCMinutes();
+    // Match times like (14:00), 14:00 SGT, at 14:00, — 18:00 in checklist/table cells
+    var timeRe = /\\b(\\d{{1,2}}):(\\d{{2}})(?:\\s*SGT)?\\b/;
+    document.querySelectorAll('.card li, .card td').forEach(function(el) {{
+      var m = el.textContent.match(timeRe);
+      if (m) {{
+        var itemMins = parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
+        if (itemMins < nowHHMM) {{
+          el.classList.add('past-item');
+        }}
+      }}
+    }});
+  }}
 }});
 </script>
 </body>
