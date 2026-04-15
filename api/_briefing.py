@@ -445,6 +445,8 @@ def run_briefing() -> tuple[str, str, str]:
         f"→ {now_sgt.strftime('%Y-%m-%d %H:%M SGT')}"
     )
 
+    print(f"[DEBUG] now_sgt={now_sgt.isoformat()}  today_str={today_str}")
+
     creds = google_creds()
     gmail_svc = build("gmail", "v1", credentials=creds)
     cal_svc = build("calendar", "v3", credentials=creds)
@@ -454,6 +456,13 @@ def run_briefing() -> tuple[str, str, str]:
     events = fetch_calendar(cal_svc, now_sgt)
     drive_files = fetch_drive(drive_svc, since)
     seatalk_msgs = fetch_seatalk_snapshot(today_str)  # None if snapshot not pushed
+
+    print(f"[DEBUG] raw events ({len(events)}):")
+    for ev in events:
+        print(f"  start={ev.get('start','')}  summary={ev.get('summary','')[:50]}")
+
+    today_events, tomorrow_events = _split_events_by_day(events, today_str)
+    print(f"[DEBUG] today_events={len(today_events)}  tomorrow_events={len(tomorrow_events)}")
 
     briefing = generate_briefing(emails, events, drive_files, today_str, window, seatalk_msgs)
     store(today_str, briefing)
