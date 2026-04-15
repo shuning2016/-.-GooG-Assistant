@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  com.goog-assistant.seatalk-summary.plist
+  ─────────────────────────────────────────
+  Runs seatalk_summary.py at 10:00, 12:00, 15:00, and 19:00 SGT.
+  Each run reads the last N hours of SeaTalk messages, generates a summary
+  via Claude, and emails it to Shuning.wang@shopee.com.
+
+  Window mapping:
+    10:00 → --hours 3   (covers 07:00–10:00)
+    12:00 → --hours 2   (covers 10:00–12:00)
+    15:00 → --hours 3   (covers 12:00–15:00)
+    19:00 → --hours 4   (covers 15:00–19:00)
+
+  Because a single plist can only pass one set of arguments, this uses a
+  wrapper script (seatalk_summary_dispatch.sh) that determines the correct
+  --hours value from the current time.
+
+  Install:
+    cp LaunchAgents/com.goog-assistant.seatalk-summary.plist ~/Library/LaunchAgents/
+    launchctl load ~/Library/LaunchAgents/com.goog-assistant.seatalk-summary.plist
+
+  Uninstall:
+    launchctl unload ~/Library/LaunchAgents/com.goog-assistant.seatalk-summary.plist
+    rm ~/Library/LaunchAgents/com.goog-assistant.seatalk-summary.plist
+
+  Logs:
+    /tmp/goog-assistant-seatalk-summary.log
+    /tmp/goog-assistant-seatalk-summary.err
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.goog-assistant.seatalk-summary</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>/Users/shuning.wang/Library/CloudStorage/GoogleDrive-shuning2016@gmail.com/My Drive/My Projects/Working Efficiency/GooG Assistant/scripts/seatalk_summary_dispatch.sh</string>
+  </array>
+
+  <!-- Fire at 10:00, 12:00, 15:00, 19:00 local time (SGT when Mac is in Asia/Singapore) -->
+  <key>StartCalendarInterval</key>
+  <array>
+    <dict>
+      <key>Hour</key>   <integer>10</integer>
+      <key>Minute</key> <integer>0</integer>
+    </dict>
+    <dict>
+      <key>Hour</key>   <integer>12</integer>
+      <key>Minute</key> <integer>0</integer>
+    </dict>
+    <dict>
+      <key>Hour</key>   <integer>15</integer>
+      <key>Minute</key> <integer>0</integer>
+    </dict>
+    <dict>
+      <key>Hour</key>   <integer>19</integer>
+      <key>Minute</key> <integer>0</integer>
+    </dict>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>/Users/shuning.wang/Library/CloudStorage/GoogleDrive-shuning2016@gmail.com/My Drive/My Projects/Working Efficiency/GooG Assistant</string>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+  </dict>
+
+  <key>StandardOutPath</key>
+  <string>/tmp/goog-assistant-seatalk-summary.log</string>
+
+  <key>StandardErrorPath</key>
+  <string>/tmp/goog-assistant-seatalk-summary.err</string>
+
+  <key>ThrottleInterval</key>
+  <integer>60</integer>
+
+  <key>RunAtLoad</key>
+  <false/>
+</dict>
+</plist>
