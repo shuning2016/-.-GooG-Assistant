@@ -84,6 +84,7 @@ Apply the key domains list and VIP list to classify every email.
 ### Super important (P0) — escalate immediately
 An email is P0 when **any** of these are true:
 - The email is from or to a VIP sender **and** the total number of recipients is fewer than 10
+- **A VIP has specifically replied in the email thread** — regardless of recipient count or domain
 - The subject, body, **or thread context** is related to a key domain (Swarm/OSP, SIP, FP&A, Budget, BPM) — check the full thread, not just the subject line
 - The subject contains `for your action` or the word `action` **and** Shuning is in `To:`
 - A direct ask, deadline, escalation, or blocker is present **and** a VIP is involved
@@ -121,6 +122,7 @@ Apply the key domains list and VIP list to classify every meeting.
 ### Super important meetings (P0)
 A meeting is P0 when **any** of these are true:
 - A VIP is the organizer or an attendee **and** total attendees is fewer than 10 **and** Shuning has accepted the invite
+- **A VIP has specifically sent a direct reply or message related to the meeting** (e.g., commented on pre-reads, sent a follow-up, or reached out directly) — regardless of attendee count — and Shuning has accepted the invite
 - The title or description is related to a key domain (Swarm/OSP, SIP, FP&A, Budget, BPM) **and** Shuning has accepted the invite
 
 ### Important meetings (P1)
