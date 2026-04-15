@@ -163,7 +163,12 @@ Each item phrased as a concrete action. Include SeaTalk action items here too.
 
 ## Today's Schedule
 Markdown table — columns: Time (SGT) | Meeting | Priority | Prep / notes
+Only include events from the "TODAY'S CALENDAR EVENTS" section here.
 Flag overlaps, all-day events, and after-hours meetings explicitly.
+
+## Tomorrow's Schedule (preview)
+If any events appear in "TOMORROW'S CALENDAR EVENTS", list the key ones
+that need prep today. Otherwise omit this section entirely.
 
 ## Google Drive Updates
 (Only include if relevant files found.) Each file as a clickable markdown link.
@@ -190,7 +195,8 @@ Numbered ordered list of concrete next steps.
 
 P0 (super important — act today). An email is P0 when ANY of these are true:
   • From or to a VIP AND total recipients < 10
-  • Subject or body related to a key domain (Swarm/OSP, SIP, FP&A, Budget, BPM)
+  • A VIP has specifically replied in the email thread — regardless of recipient count or domain
+  • Subject, body, or thread context related to a key domain (Swarm/OSP, SIP, FP&A, Budget, BPM) — check the full thread, not just the subject line
   • Subject contains "for your action" or the word "action" AND Shuning is in To:
   • A direct ask, deadline, escalation, or blocker is present AND a VIP is involved
 
@@ -199,9 +205,10 @@ P1 (important — handle within 48 h). An email is P1 when ANY of these are true
   • Shuning is in To: (not only Cc:) AND email asks a direct question or assigns an action
   • Shuning is addressed directly (Hi Shuning / Shuning, / Hey Shuning) and not already P0
   • Mentions deadline, contract, travel, interview, meeting, approval, confirmation,
-    escalation, or blocker — and is NOT related to a key domain (which would make it P0)
+    escalation, or blocker — AND Shuning is in To: (not only Cc:) — and is NOT related to a key domain (which would make it P0)
   • Thread appears to require a reply within the next 2 days
   • Email materially changes risk, ownership, timing, or expectations
+  • Email relates to team headcount, personnel changes, internal transfers, or org structure affecting Shuning's direct team
 
 P2 (lower priority — track but not urgent). An email is P2 when ALL are true:
   • Not related to any key domain
@@ -209,36 +216,43 @@ P2 (lower priority — track but not urgent). An email is P2 when ALL are true:
   • No direct ask or deadline
   • Informational, Cc-only update, or general announcement
 
-Suppress entirely (omit from briefing unless they contain a new risk, direct ask, or deadline):
+Suppress entirely (omit from briefing unless they contain a new risk, direct ask, or deadline directed at Shuning):
   newsletters, promotions, receipts, obvious automated alerts, recurring daily digests or
   repeated daily reports, routine calendar/system notifications.
+  Operational reports, warehouse reports, logistics alerts, or system-generated metrics from
+  domains outside Shuning's five key domains — suppress even if they contain new numbers.
 
 ─── CALENDAR TRIAGE RULES ───────────────────────────────────────────────────────────
 
 P0 meeting when ANY are true:
-  • A VIP is organizer or attendee AND total attendees < 10
-  • Title or description is related to a key domain
+  • A VIP is organizer or attendee AND total attendees < 10 AND Shuning has accepted the invite
+  • A VIP has specifically sent a direct reply or message related to the meeting — regardless of attendee count — AND Shuning has accepted
+  • Title or description is related to a key domain AND Shuning has accepted the invite
 
 P1 meeting when ANY are true (and not already P0):
-  • VIP organizer/attendee with ≥ 10 total attendees
-  • External participants are involved
+  • VIP organizer/attendee with ≥ 10 total attendees AND Shuning has accepted
+  • External participants are involved AND Shuning has accepted
   • Title or description signals a decision, review, escalation, interview, travel,
-    contract, hiring, or action item
+    contract, hiring, or action item AND Shuning has accepted
   • Shuning is expected to present, decide, approve, or provide an update
-  • A pre-read, deck, document, or deliverable appears necessary
-  • RSVP: always check Shuning's response status — if he declined or has NOT responded,
-    note this alongside the priority (e.g. "[not responded]", "[declined]")
+  • A pre-read, deck, document, or deliverable appears necessary AND Shuning has accepted
+  • RSVP: always check Shuning's response status — if he has NOT accepted (declined or
+    no response), downgrade to P2 and do NOT generate prep recommendations. Note RSVP explicitly.
 
 P2 meeting when ANY are true:
   • Total attendees > 30, even if a VIP is present
   • Not related to any key domain and does not meet P0/P1 criteria
   • Shuning is only Cc'd or optionally invited with no expected contribution
+  • Shuning has NOT accepted the invite (declined or no response) — regardless of other factors
 
 Always flag:
   • All-day events
   • After-hours meetings (outside 09:30–19:30 SGT)
   • Overlapping meetings (call out both titles and the overlap window)
   • Tomorrow's first meeting if preparation today would be useful
+
+IMPORTANT: Events are pre-split into "TODAY'S CALENDAR EVENTS" and "TOMORROW'S CALENDAR EVENTS".
+Use only today's events for "Today's Schedule". Never label today's events as tomorrow or vice versa.
 
 ─── SEATALK TRIAGE RULES ────────────────────────────────────────────────────────────
 
@@ -253,6 +267,20 @@ Suppress: bot alerts, automated reports, reaction-only messages, join/leave noti
 
 Use Singapore time (SGT) for all timestamps. Be concise — lead with the answer.\
 """
+
+
+def _split_events_by_day(events: list, today_str: str) -> tuple[list, list]:
+    """Split calendar events into today's and tomorrow's based on start date."""
+    today_events = []
+    tomorrow_events = []
+    for ev in events:
+        start = ev.get("start", "")
+        event_date = start[:10] if start else ""
+        if event_date == today_str:
+            today_events.append(ev)
+        else:
+            tomorrow_events.append(ev)
+    return today_events, tomorrow_events
 
 
 def generate_briefing(
@@ -271,13 +299,17 @@ def generate_briefing(
         else "SEATALK: Snapshot not available for this run (seatalk_snapshot.py may not have run).\n"
     )
 
+    today_events, tomorrow_events = _split_events_by_day(events, today)
+
     payload = (
         f"REVIEW WINDOW: {window}\n"
         f"TODAY: {today} (Asia/Singapore)\n\n"
         f"=== GMAIL ({len(emails)} messages) ===\n"
         f"{json.dumps(emails, indent=2, default=str)}\n\n"
-        f"=== CALENDAR EVENTS ===\n"
-        f"{json.dumps(events, indent=2, default=str)}\n\n"
+        f"=== TODAY'S CALENDAR EVENTS ({today}, {len(today_events)} events) ===\n"
+        f"{json.dumps(today_events, indent=2, default=str)}\n\n"
+        f"=== TOMORROW'S CALENDAR EVENTS ({len(tomorrow_events)} events) ===\n"
+        f"{json.dumps(tomorrow_events, indent=2, default=str)}\n\n"
         f"=== GOOGLE DRIVE CHANGES ({len(drive_files)} files) ===\n"
         f"{json.dumps(drive_files, indent=2, default=str)}\n\n"
         f"=== SEATALK MESSAGES ===\n"
