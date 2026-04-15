@@ -1,5 +1,5 @@
 """
-/api/seatalk_check?date=YYYY-MM-DD
+/api/seatalk_check?date=YYYY-MM-DD HH:mm
 
 Returns a fresh SeaTalk summary for the given date as JSON, for use by the
 "SeaTalk Check" button on the view page.
