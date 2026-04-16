@@ -363,7 +363,7 @@ function _confirmIfRecent(type, label) {{
   if (diffMs >= 2 * 60 * 60 * 1000) return true;
   var mins = Math.round(diffMs / 60000);
   var timeStr = mins < 1 ? 'less than a minute' : mins + ' min' + (mins === 1 ? '' : 's');
-  return window.confirm(label + ' was already run ' + timeStr + ' ago.\nRun again?');
+  return window.confirm(label + ' was already run ' + timeStr + ' ago. Run again?');
 }}
 
 // Toggle: if data is already loaded, just open/close the drawer without re-fetching.
