@@ -50,6 +50,8 @@ def _render_html(briefing_md: str, date_str: str) -> str:
     # with the same quote type are a syntax error in Python < 3.12 (Vercel runtime).
     run_brief_fn = (
         "function runBrief() {\n"
+        "  if (!_confirmIfRecent('main', 'Daily brief')) return;\n"
+        "  _setLastRun('main');\n"
         "  var btn = document.getElementById('runBtn');\n"
         "  if (btn) { btn.disabled = true; btn.textContent = 'Running\u2026'; }\n"
         f"  window.location.href = '{turl}';\n"
@@ -149,6 +151,12 @@ def _render_html(briefing_md: str, date_str: str) -> str:
     cursor:pointer;color:var(--teal);opacity:.7;line-height:1;padding:2px 6px;
   }}
   .st-close:hover{{opacity:1}}
+  .st-refresh{{
+    background:none;border:none;font-size:1rem;
+    cursor:pointer;color:var(--teal);opacity:.7;line-height:1;padding:2px 6px;
+    transition:transform .35s;
+  }}
+  .st-refresh:hover{{opacity:1;transform:rotate(180deg)}}
   .st-body h3{{font-size:.95rem;color:#172B4D;margin:1rem 0 .3rem;font-weight:700}}
   .st-body p{{margin:.4rem 0;font-size:.88rem;color:#374151}}
   .st-body ul{{padding-left:1.3rem;margin:.3rem 0}}
@@ -309,8 +317,9 @@ def _render_html(briefing_md: str, date_str: str) -> str:
 <div class="st-drawer" id="stDrawer">
   <div class="st-inner">
     <div class="st-meta">
-      <span>&#128172; SeaTalk Check</span>
+      <span>&#128172; SeaTalk</span>
       <span id="stMeta"></span>
+      <button class="st-refresh" id="stRefreshBtn" onclick="refreshSeatalk()" title="Refresh" style="display:none">&#8635;</button>
       <button class="st-close" onclick="closeDrawer()" title="Close">&times;</button>
     </div>
     <div class="st-body" id="stBody"></div>
@@ -320,7 +329,7 @@ def _render_html(briefing_md: str, date_str: str) -> str:
 <div id="staleBanner" style="display:none" class="stale-banner">
   <span>&#9888;</span>
   <span>This brief is from <strong>{date_str}</strong> — meetings listed may have already passed.</span>
-  {f'<button class="stale-regen" onclick="window.location.href=\'{turl}\'">&#9654; Run today\'s brief</button>' if turl else ''}
+  {f'<button class="stale-regen" onclick="runBrief()">&#9654; Run today\'s brief</button>' if turl else ''}
 </div>
 
 <div class="page">
@@ -333,13 +342,60 @@ def _render_html(briefing_md: str, date_str: str) -> str:
 <script>
 // ── SeaTalk check ────────────────────────────────────────────────────────────
 var _stDate = {json.dumps(date_str)};
+var _stContentLoaded = false;
 
+// ── localStorage helpers for 2-hour run confirmation ────────────────────────
+function _getLastRun(type) {{
+  try {{
+    var v = localStorage.getItem('brief-last-run:' + type + ':' + _stDate);
+    return v ? parseInt(v, 10) : null;
+  }} catch(e) {{ return null; }}
+}}
+function _setLastRun(type) {{
+  try {{
+    localStorage.setItem('brief-last-run:' + type + ':' + _stDate, Date.now().toString());
+  }} catch(e) {{}}
+}}
+function _confirmIfRecent(type, label) {{
+  var last = _getLastRun(type);
+  if (!last) return true;
+  var diffMs = Date.now() - last;
+  if (diffMs >= 2 * 60 * 60 * 1000) return true;
+  var mins = Math.round(diffMs / 60000);
+  var timeStr = mins < 1 ? 'less than a minute' : mins + ' min' + (mins === 1 ? '' : 's');
+  return window.confirm(label + ' was already run ' + timeStr + ' ago.\nRun again?');
+}}
+
+// Toggle: if data is already loaded, just open/close the drawer without re-fetching.
 function checkSeatalk() {{
+  var drawer = document.getElementById('stDrawer');
+  if (_stContentLoaded) {{
+    if (drawer.classList.contains('open')) {{
+      closeDrawer();
+    }} else {{
+      openDrawer();
+    }}
+    return;
+  }}
+  if (!_confirmIfRecent('seatalk', 'SeaTalk check')) return;
+  _fetchSeatalk();
+}}
+
+// Explicit refresh from inside the drawer — always re-fetches after confirmation.
+function refreshSeatalk() {{
+  if (!_confirmIfRecent('seatalk', 'SeaTalk check')) return;
+  _stContentLoaded = false;
+  document.querySelector('#stBtn .st-label').innerHTML = '&#128172; SeaTalk';
+  _fetchSeatalk();
+}}
+
+function _fetchSeatalk() {{
   var btn = document.getElementById('stBtn');
   btn.disabled = true;
   btn.classList.add('loading');
   document.getElementById('stBody').innerHTML = '<p style="color:#0080C6;font-size:.85rem">Fetching SeaTalk messages\u2026</p>';
   document.getElementById('stMeta').textContent = '';
+  document.getElementById('stRefreshBtn').style.display = 'none';
   openDrawer();
 
   fetch('/api/seatalk_check?date=' + encodeURIComponent(_stDate))
@@ -348,9 +404,13 @@ function checkSeatalk() {{
       btn.disabled = false;
       btn.classList.remove('loading');
       if (d.ok) {{
+        _stContentLoaded = true;
+        _setLastRun('seatalk');
         document.getElementById('stMeta').textContent =
           d.message_count + ' messages \u00b7 ' + d.generated_at;
         document.getElementById('stBody').innerHTML = stMd(d.summary);
+        document.getElementById('stRefreshBtn').style.display = '';
+        document.querySelector('#stBtn .st-label').innerHTML = '&#128172; SeaTalk \u2713';
         tagPriorities(document.getElementById('stBody'));
       }} else {{
         document.getElementById('stBody').innerHTML =
