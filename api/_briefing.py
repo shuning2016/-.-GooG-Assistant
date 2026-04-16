@@ -272,13 +272,29 @@ Use Singapore time (SGT) for all timestamps. Be concise — lead with the answer
 """
 
 
+def _event_sgt_date(start_str: str) -> str:
+    """Extract the SGT date (YYYY-MM-DD) from a Google Calendar start string.
+
+    Handles timezone-aware ISO datetimes (e.g. '2026-04-15T17:00:00Z',
+    '2026-04-16T01:00:00+08:00') and plain date strings ('2026-04-16')."""
+    if not start_str:
+        return ""
+    # All-day events are plain YYYY-MM-DD — no conversion needed
+    if len(start_str) == 10:
+        return start_str
+    try:
+        dt = datetime.fromisoformat(start_str.replace("Z", "+00:00"))
+        return dt.astimezone(SGT).strftime("%Y-%m-%d")
+    except (ValueError, TypeError):
+        return start_str[:10]
+
+
 def _split_events_by_day(events: list, today_str: str) -> tuple[list, list]:
-    """Split calendar events into today's and tomorrow's based on start date."""
+    """Split calendar events into today's and tomorrow's based on SGT date."""
     today_events = []
     tomorrow_events = []
     for ev in events:
-        start = ev.get("start", "")
-        event_date = start[:10] if start else ""
+        event_date = _event_sgt_date(ev.get("start", ""))
         if event_date == today_str:
             today_events.append(ev)
         else:
@@ -319,13 +335,21 @@ def generate_briefing(
         f"{seatalk_section}"
     )
 
-    msg = client.messages.create(
-        model="claude-opus-4-6",
-        max_tokens=4096,
-        system=SYSTEM_PROMPT,
-        messages=[{"role": "user", "content": f"Generate my daily briefing:\n\n{payload}"}],
-    )
-    return msg.content[0].text
+    models = ["claude-sonnet-4-6", "claude-opus-4-6"]
+    last_err = None
+    for model in models:
+        try:
+            msg = client.messages.create(
+                model=model,
+                max_tokens=4096,
+                system=SYSTEM_PROMPT,
+                messages=[{"role": "user", "content": f"Generate my daily briefing:\n\n{payload}"}],
+            )
+            return msg.content[0].text
+        except Exception as exc:
+            last_err = exc
+            continue
+    raise last_err
 
 
 # ─── Storage ──────────────────────────────────────────────────────────────────
