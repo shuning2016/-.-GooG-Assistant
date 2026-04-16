@@ -35,13 +35,15 @@ Apply these rules when classifying SeaTalk messages. They mirror the Gmail triag
 
 ### P0 — Act today
 A SeaTalk message is P0 when **any** of these are true:
-- It is a **direct (private) message from a VIP**: jianghong.liu, hoi, fengc — regardless of group
-  size
-- It **mentions Shuning** (`@shuning.wang` / `@Shuning`) in any channel
-- Its content is related to a **key domain**: Swarm, OSP, SIP, FP&A, Budget, BPM
-- It is from the group with name of **key domain**: Swarm, OSP, SIP, FP&A, Budget, BPM
-- It contains a **direct ask, deadline, escalation, or blocker** directed at Shuning's area
-- It is a **thread reply in a thread Shuning owns** (he is the original poster)
+1. It is a **direct (private) message from a VIP**: jianghong.liu, hoi, fengc — regardless of
+   content
+2. It **@mentions Shuning** (`@shuning.wang` / `@Shuning`) in any group
+3. Its **content** is about a key domain: Swarm, OSP, SIP, FP&A, Budget, BPM
+4. It is **from a group whose name contains a key domain word** — e.g. a group called "Swarm",
+   "BPM Leads", "SIP Core Leads", "OSP team", "FP&A". Every message in that group is P0
+   regardless of whether the content explicitly mentions the domain keyword.
+5. It contains a **direct ask, deadline, escalation, or blocker** directed at Shuning or his area
+6. It is a **thread reply in a thread Shuning originally started** (he is the OP)
 
 ### P1 — Handle within 48 h
 A SeaTalk message is P1 when **any** of these are true (and not already P0):
