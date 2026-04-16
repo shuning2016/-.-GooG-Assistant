@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<!--
+  ╔═══════════════════════════════════════════════════════════════════════╗
+  ║  SHUNING DAILY BRIEF — HTML TEMPLATE                                  ║
+  ║                                                                        ║
+  ║  Placeholders (replace each with the HTML fragment described):         ║
+  ║                                                                        ║
+  ║  {{DATE}}              — e.g. "Wednesday, 16 April 2026"              ║
+  ║  {{GENERATED_AT}}      — e.g. "08:02 SGT"                            ║
+  ║  {{REVIEW_WINDOW}}     — e.g. "13 Apr 10:00 → 16 Apr 08:00 SGT"     ║
+  ║  {{EXECUTIVE_BRIEF}}   — one or more <p> elements                     ║
+  ║  {{P0_ITEMS}}          — zero or more <li> checklist items            ║
+  ║  {{P1_ITEMS}}          — zero or more <li> checklist items            ║
+  ║  {{P2_ITEMS}}          — zero or more <li> checklist items            ║
+  ║  {{SCHEDULE_ROWS}}     — zero or more <tr> rows (use row classes)     ║
+  ║  {{DRIVE_UPDATES}}     — complete <section class="card"> block or ""  ║
+  ║  {{ADDITIONAL_SECTIONS}} — remaining <section class="card"> blocks    ║
+  ║                                                                        ║
+  ║  Checklist item format:                                                ║
+  ║    <li class="task-item">                                             ║
+  ║      <input type="checkbox" id="t-N">                                 ║
+  ║      <label for="t-N"><strong>Approve</strong> IDBR LH…</label>      ║
+  ║    </li>                                                               ║
+  ║                                                                        ║
+  ║  Schedule row classes:                                                 ║
+  ║    <tr>               — normal row                                    ║
+  ║    <tr class="vip-row">      — VIP organiser / attendee               ║
+  ║    <tr class="overlap-row">  — calendar conflict                      ║
+  ║    <tr class="afterhours-row"> — outside 09:30–19:30                  ║
+  ║                                                                        ║
+  ║  Inline chips (use inside any td or li label):                         ║
+  ║    <span class="chip vip">VIP</span>                                  ║
+  ║    <span class="chip overlap">⚠ Overlap</span>                        ║
+  ║    <span class="chip domain">BPM</span>                               ║
+  ║    <span class="chip rsvp-pending">Not RSVP'd</span>                  ║
+  ║                                                                        ║
+  ║  Available section helpers:                                            ║
+  ║    class="bullet-list"   — for What Matters / What Can Wait           ║
+  ║    class="risk-list"     — for Risks / Watchouts                      ║
+  ║    class="reply-table"   — for What to Reply To                       ║
+  ║    class="prep-list"     — for Prep Needed                            ║
+  ║    class="preread-item"  — for Meeting Pre-reads                      ║
+  ╚═══════════════════════════════════════════════════════════════════════╝
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Daily Brief — {{DATE}}</title>
+  <style>
+    /* ─── Reset ────────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    /* ─── Tokens ───────────────────────────────────────────────────── */
+    :root {
+      /* Priority */
+      --p0:            #dc2626;
+      --p0-bg:         #fef2f2;
+      --p0-border:     #fca5a5;
+      --p1:            #d97706;
+      --p1-bg:         #fffbeb;
+      --p1-border:     #fde68a;
+      --p2:            #6b7280;
+      --p2-bg:         #f9fafb;
+      --p2-border:     #e5e7eb;
+      /* Semantic */
+      --vip:           #7c3aed;
+      --vip-bg:        #f5f3ff;
+      --vip-border:    #ddd6fe;
+      --overlap-bg:    #fff1f2;
+      --afterhours-bg: #fffbeb;
+      --risk-bg:       #fff7ed;
+      --risk-border:   #fed7aa;
+      --prep-bg:       #f0fdf4;
+      --prep-border:   #bbf7d0;
+      --preread-bg:    #f0f9ff;
+      --preread-border:#bae6fd;
+      --link:          #1d4ed8;
+      /* Surfaces */
+      --surface:       #ffffff;
+      --bg:            #f1f5f9;
+      --border:        #e2e8f0;
+      /* Text */
+      --text:          #0f172a;
+      --text-sec:      #475569;
+      --muted:         #94a3b8;
+      /* Header */
+      --header-bg:     #0f172a;
+      --header-accent: #334155;
+      /* Shape */
+      --radius:        12px;
+      --radius-sm:     8px;
+      --shadow:        0 1px 3px rgba(0,0,0,.07), 0 1px 2px rgba(0,0,0,.04);
+    }
+
+    /* ─── Base ─────────────────────────────────────────────────────── */
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui,
+                   'Helvetica Neue', Arial, sans-serif;
+      font-size: 14px;
+      line-height: 1.6;
+      background: var(--bg);
+      color: var(--text);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { color: var(--link); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    strong { font-weight: 600; }
+
+    /* ─── Header ───────────────────────────────────────────────────── */
+    .site-header {
+      background: var(--header-bg);
+      border-bottom: 1px solid #1e293b;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 2px 10px rgba(0,0,0,.35);
+    }
+    .header-inner {
+      max-width: 880px;
+      margin: 0 auto;
+      padding: 18px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+    .header-eyebrow {
+      display: block;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .14em;
+      color: #64748b;
+      text-transform: uppercase;
+      margin-bottom: 3px;
+    }
+    .header-date {
+      font-size: 1.375rem;
+      font-weight: 700;
+      color: #f1f5f9;
+      letter-spacing: -.025em;
+    }
+    .header-meta {
+      text-align: right;
+      flex-shrink: 0;
+    }
+    .header-meta-label {
+      display: block;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: .1em;
+      color: #475569;
+      text-transform: uppercase;
+    }
+    .header-meta-value {
+      font-size: 0.9375rem;
+      font-weight: 600;
+      color: #94a3b8;
+    }
+    .header-window {
+      display: block;
+      font-size: 10px;
+      color: #475569;
+      margin-top: 2px;
+    }
+
+    /* ─── Layout ───────────────────────────────────────────────────── */
+    .content {
+      max-width: 880px;
+      margin: 0 auto;
+      padding: 20px 20px 56px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    /* ─── Card ─────────────────────────────────────────────────────── */
+    .card {
+      background: var(--surface);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
+      padding: 20px 24px;
+      overflow: hidden;
+    }
+    .card-title {
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 14px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* ─── Executive Brief ──────────────────────────────────────────── */
+    .exec-brief {
+      border-left: 4px solid #334155;
+    }
+    .exec-brief .exec-content {
+      font-size: 0.9375rem;
+      line-height: 1.75;
+      color: var(--text);
+    }
+    .exec-brief .exec-content p + p { margin-top: 8px; }
+
+    /* ─── Checklist ────────────────────────────────────────────────── */
+    .priority-block {
+      border-radius: var(--radius-sm);
+      padding: 14px 16px;
+      margin-bottom: 10px;
+    }
+    .priority-block:last-child { margin-bottom: 0; }
+    .p0-block { background: var(--p0-bg);  border-left: 4px solid var(--p0); }
+    .p1-block { background: var(--p1-bg);  border-left: 4px solid var(--p1); }
+    .p2-block { background: var(--p2-bg);  border-left: 4px solid var(--p2); }
+
+    .priority-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .priority-pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .04em;
+      color: #fff;
+      padding: 1px 9px;
+      border-radius: 100px;
+    }
+    .p0-pill { background: var(--p0); }
+    .p1-pill { background: var(--p1); }
+    .p2-pill { background: var(--p2); }
+    .priority-desc {
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--text-sec);
+    }
+
+    .task-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+    }
+    .task-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 6px 0;
+      border-bottom: 1px solid rgba(0,0,0,.05);
+    }
+    .task-item:last-child { border-bottom: none; }
+
+    .task-item input[type="checkbox"] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 17px;
+      height: 17px;
+      min-width: 17px;
+      border: 2px solid #cbd5e1;
+      border-radius: 4px;
+      margin-top: 2px;
+      cursor: pointer;
+      background: #fff;
+      position: relative;
+      transition: background .12s ease, border-color .12s ease;
+    }
+    .task-item input[type="checkbox"]:hover { border-color: #94a3b8; }
+    .task-item input[type="checkbox"]:checked {
+      background: var(--link);
+      border-color: var(--link);
+    }
+    .task-item input[type="checkbox"]:checked::after {
+      content: '';
+      position: absolute;
+      left: 4px;
+      top: 1px;
+      width: 5px;
+      height: 9px;
+      border: 2px solid #fff;
+      border-top: none;
+      border-left: none;
+      transform: rotate(44deg);
+    }
+    .task-item label {
+      font-size: 0.875rem;
+      line-height: 1.55;
+      color: var(--text);
+      cursor: pointer;
+    }
+
+    /* ─── Schedule Table ───────────────────────────────────────────── */
+    .table-scroll {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      margin: 0 -4px;
+      padding: 0 4px;
+    }
+    .schedule-table,
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.875rem;
+    }
+    .schedule-table th,
+    .data-table th {
+      text-align: left;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      padding: 0 12px 10px;
+      border-bottom: 2px solid var(--border);
+      white-space: nowrap;
+    }
+    .schedule-table td,
+    .data-table td {
+      padding: 9px 12px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+    .schedule-table tr:last-child td,
+    .data-table tr:last-child td { border-bottom: none; }
+    .schedule-table tbody tr:hover td { background: #f8fafc; }
+
+    /* Schedule row variants — order matters (overlap > vip) */
+    .vip-row td:first-child { border-left: 3px solid var(--vip); }
+    .vip-row { background: var(--vip-bg) !important; }
+
+    .overlap-row { background: var(--overlap-bg) !important; }
+    .overlap-row td:first-child { border-left: 3px solid var(--p0); }
+    .overlap-row td { color: #9f1239; }
+
+    .afterhours-row { background: var(--afterhours-bg) !important; }
+    .afterhours-row td { color: #92400e; }
+
+    .col-time    { width: 115px; white-space: nowrap; font-weight: 600; }
+    .col-meeting { min-width: 200px; }
+    .col-why     { min-width: 160px; }
+    .col-note    { min-width: 150px; color: var(--text-sec); font-size: 0.8125rem; }
+
+    /* ─── Chips ────────────────────────────────────────────────────── */
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .05em;
+      padding: 1px 7px;
+      border-radius: 4px;
+      border: 1px solid transparent;
+      margin-left: 5px;
+      vertical-align: middle;
+      white-space: nowrap;
+      line-height: 16px;
+    }
+    .chip.vip          { color: var(--vip);  background: var(--vip-bg);    border-color: var(--vip-border); }
+    .chip.overlap      { color: var(--p0);   background: var(--p0-bg);     border-color: var(--p0-border);  }
+    .chip.domain       { color: #0369a1;     background: #e0f2fe;           border-color: #bae6fd;           }
+    .chip.rsvp-pending { color: #92400e;     background: var(--afterhours-bg); border-color: #fde68a;       }
+    .chip.afterhours   { color: #b45309;     background: #fef9c3;           border-color: #fef08a;           }
+
+    /* ─── Drive Updates ────────────────────────────────────────────── */
+    .drive-subsection + .drive-subsection {
+      margin-top: 18px;
+      padding-top: 14px;
+      border-top: 1px solid var(--border);
+    }
+    .subsection-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .07em;
+      text-transform: uppercase;
+      color: var(--text-sec);
+      margin-bottom: 10px;
+    }
+
+    /* ─── Reply Table ──────────────────────────────────────────────── */
+    .reply-table td:last-child { width: 40%; }
+    .reply-text {
+      display: block;
+      font-style: italic;
+      font-size: 0.8125rem;
+      color: var(--text-sec);
+      background: #f8fafc;
+      border-left: 3px solid #cbd5e1;
+      padding: 5px 10px;
+      border-radius: 0 4px 4px 0;
+    }
+
+    /* ─── Bullet List ──────────────────────────────────────────────── */
+    .bullet-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+    }
+    .bullet-list li {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      padding: 7px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.875rem;
+    }
+    .bullet-list li:last-child { border-bottom: none; }
+    .bullet-list li::before {
+      content: '–';
+      color: var(--muted);
+      min-width: 10px;
+      margin-top: 1px;
+      flex-shrink: 0;
+    }
+
+    /* ─── Risk List ────────────────────────────────────────────────── */
+    .risk-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .risk-item {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      background: var(--risk-bg);
+      border: 1px solid var(--risk-border);
+      border-radius: var(--radius-sm);
+      padding: 10px 14px;
+      font-size: 0.875rem;
+    }
+    .risk-icon { min-width: 18px; color: #ea580c; }
+
+    /* ─── Prep List ────────────────────────────────────────────────── */
+    .prep-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .prep-item {
+      background: var(--prep-bg);
+      border: 1px solid var(--prep-border);
+      border-radius: var(--radius-sm);
+      padding: 10px 14px;
+      font-size: 0.875rem;
+    }
+    .prep-time {
+      font-weight: 700;
+      color: #166534;
+      display: block;
+      margin-bottom: 2px;
+    }
+
+    /* ─── Pre-reads ────────────────────────────────────────────────── */
+    .preread-item {
+      background: var(--preread-bg);
+      border: 1px solid var(--preread-border);
+      border-radius: var(--radius-sm);
+      padding: 12px 14px;
+      margin-bottom: 10px;
+      font-size: 0.875rem;
+    }
+    .preread-item:last-child { margin-bottom: 0; }
+    .preread-meeting {
+      font-weight: 700;
+      color: #0c4a6e;
+      margin-bottom: 6px;
+    }
+    .preread-bullets {
+      list-style: disc;
+      padding-left: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    /* ─── Card sub-section divider ─────────────────────────────────── */
+    .card-subsection {
+      margin-top: 18px;
+      padding-top: 14px;
+      border-top: 1px solid var(--border);
+    }
+    .card-subsection-title {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: var(--text-sec);
+      margin-bottom: 10px;
+    }
+
+    /* ─── Back to top ──────────────────────────────────────────────── */
+    .back-to-top {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      width: 38px;
+      height: 38px;
+      background: var(--header-bg);
+      color: #94a3b8;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(0,0,0,.25);
+      text-decoration: none;
+      transition: background .15s ease;
+      z-index: 50;
+    }
+    .back-to-top:hover {
+      background: #1e293b;
+      text-decoration: none;
+      color: #e2e8f0;
+    }
+
+    /* ─── Responsive ───────────────────────────────────────────────── */
+    @media (max-width: 640px) {
+      .header-date    { font-size: 1.1rem; }
+      .header-window  { display: none; }
+      .content        { padding: 14px 14px 48px; gap: 12px; }
+      .card           { padding: 16px; }
+      .col-why,
+      .col-note       { display: none; }
+      .back-to-top    { bottom: 16px; right: 16px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ════════════════════════════════════════════════════
+       HEADER
+  ════════════════════════════════════════════════════ -->
+  <header class="site-header" id="top">
+    <div class="header-inner">
+      <div>
+        <span class="header-eyebrow">Daily Brief</span>
+        <h1 class="header-date">{{DATE}}</h1>
+      </div>
+      <div class="header-meta">
+        <span class="header-meta-label">Generated</span>
+        <span class="header-meta-value">{{GENERATED_AT}}</span>
+        <span class="header-window">{{REVIEW_WINDOW}}</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ════════════════════════════════════════════════════
+       MAIN CONTENT
+  ════════════════════════════════════════════════════ -->
+  <main class="content">
+
+    <!-- ── Executive Brief ───────────────────────────── -->
+    <section class="card exec-brief">
+      <div class="card-title">Executive Brief</div>
+      <div class="exec-content">
+        {{EXECUTIVE_BRIEF}}
+      </div>
+    </section>
+
+    <!-- ── Prioritized Checklist ─────────────────────── -->
+    <section class="card">
+      <div class="card-title">Prioritized Checklist</div>
+
+      <div class="priority-block p0-block">
+        <div class="priority-header">
+          <span class="priority-pill p0-pill">P0</span>
+          <span class="priority-desc">Urgent — act today</span>
+        </div>
+        <ul class="task-list">
+          {{P0_ITEMS}}
+        </ul>
+      </div>
+
+      <div class="priority-block p1-block">
+        <div class="priority-header">
+          <span class="priority-pill p1-pill">P1</span>
+          <span class="priority-desc">Important — within 48 hours</span>
+        </div>
+        <ul class="task-list">
+          {{P1_ITEMS}}
+        </ul>
+      </div>
+
+      <div class="priority-block p2-block">
+        <div class="priority-header">
+          <span class="priority-pill p2-pill">P2</span>
+          <span class="priority-desc">Track — can wait</span>
+        </div>
+        <ul class="task-list">
+          {{P2_ITEMS}}
+        </ul>
+      </div>
+    </section>
+
+    <!-- ── Today's Schedule ──────────────────────────── -->
+    <section class="card">
+      <div class="card-title">Today's Schedule</div>
+      <div class="table-scroll">
+        <table class="schedule-table">
+          <thead>
+            <tr>
+              <th class="col-time">Time</th>
+              <th class="col-meeting">Meeting</th>
+              <th class="col-why">Why It Matters</th>
+              <th class="col-note">Note</th>
+            </tr>
+          </thead>
+          <tbody>
+            {{SCHEDULE_ROWS}}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ── Google Drive Updates (optional) ───────────── -->
+    {{DRIVE_UPDATES}}
+
+    <!-- ── Remaining sections ────────────────────────── -->
+    <!--
+      Each section should be a <section class="card"> block.
+      Available section types:
+
+      WHAT MATTERS TODAY / WHAT CAN WAIT:
+        <section class="card">
+          <div class="card-title">What Matters Today</div>
+          <ul class="bullet-list">
+            <li><strong>IDBR LH approval</strong> — detail…</li>
+          </ul>
+        </section>
+
+      WHAT TO REPLY TO:
+        <section class="card">
+          <div class="card-title">What to Reply To</div>
+          <div class="table-scroll">
+            <table class="data-table reply-table">
+              <thead><tr><th>Who</th><th>Subject</th><th>Suggested Reply</th></tr></thead>
+              <tbody>
+                <tr>
+                  <td>Arielle Aw</td>
+                  <td>[For Approval] IDBR LH Cost Adjustment</td>
+                  <td><span class="reply-text">"Approved. Proceed."</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+      RISKS / WATCHOUTS:
+        <section class="card">
+          <div class="card-title">Risks &amp; Watchouts</div>
+          <ul class="risk-list">
+            <li class="risk-item">
+              <span class="risk-icon">⚠</span>
+              <div><strong>Calendar conflict 15:00</strong>: detail…</div>
+            </li>
+          </ul>
+        </section>
+
+      PREP NEEDED:
+        <section class="card">
+          <div class="card-title">Prep Needed</div>
+          <ul class="prep-list">
+            <li class="prep-item">
+              <span class="prep-time">14:00 CNCB MP bi-weekly</span>
+              Review Elaine Wang's pre-read deck by 13:30.
+            </li>
+          </ul>
+        </section>
+
+      MEETING PRE-READS:
+        <section class="card">
+          <div class="card-title">Meeting Pre-reads</div>
+          <div class="preread-item">
+            <div class="preread-meeting">CNCB MP — today 14:00 SGT</div>
+            <ul class="preread-bullets">
+              <li>CNY winning campaign recap and Ads growth plan updated</li>
+              <li>Decisions expected on seller targets</li>
+            </ul>
+          </div>
+        </section>
+
+      TOMORROW'S SCHEDULE (same structure as today's):
+        <section class="card">
+          <div class="card-title">Tomorrow's Schedule — Fri 17 Apr</div>
+          <div class="table-scroll">
+            <table class="schedule-table">…</table>
+          </div>
+        </section>
+    -->
+    {{ADDITIONAL_SECTIONS}}
+
+  </main>
+
+  <a href="#top" class="back-to-top" title="Back to top">↑</a>
+
+</body>
+</html>
