@@ -60,6 +60,20 @@ A SeaTalk message is P2 when **all** of these are true:
 - No VIP involved in a small-group context
 - Informational, FYI, or announcement with no action required from Shuning
 
+### Friends rule
+Kel Jin and Han Cheng are personal friends, not work colleagues:
+- Label their messages with "Friend :)" after the source pill.
+- Do **not** classify as P1 just because it is a DM from them.
+- Classify P0 only if the message genuinely contains a key-domain topic or urgent work ask.
+- Otherwise P2.
+
+### Already-handled rule
+Omit a conversation entirely when **all** of these are true:
+- Shuning already replied (a message with `fromSelf=true` exists in that session/thread), AND
+- There are no messages in that session/thread timestamped **after** his last reply.
+
+Such threads are closed — no further action is needed.
+
 ### Suppressions
 Suppress entirely unless they contain a new risk, direct ask, or deadline:
 - Automated bot notifications (CI/CD, alerts, monitoring)
