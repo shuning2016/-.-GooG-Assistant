@@ -159,8 +159,13 @@ def _render_html(briefing_md: str, date_str: str) -> str:
   .st-refresh:hover{{opacity:1;transform:rotate(180deg)}}
   .st-body h3{{font-size:.95rem;color:#172B4D;margin:1rem 0 .3rem;font-weight:700}}
   .st-body p{{margin:.4rem 0;font-size:.88rem;color:#374151}}
-  .st-body ul{{padding-left:1.3rem;margin:.3rem 0}}
-  .st-body li{{font-size:.88rem;margin:.25rem 0;color:#374151}}
+  .st-body ul{{padding-left:0;list-style:none;margin:.3rem 0}}
+  .st-body li{{
+    font-size:.88rem;margin:.5rem 0;color:#374151;
+    padding:.5rem .75rem;background:#f8fafc;
+    border-radius:6px;border-left:3px solid var(--border);
+    line-height:1.55;
+  }}
   .st-body strong{{color:var(--text)}}
   .st-body .p0-badge{{
     display:inline-block;background:#fef2f2;color:var(--red);
@@ -181,6 +186,27 @@ def _render_html(briefing_md: str, date_str: str) -> str:
     color:#9f1239;background:#fff1f2;border:1px solid #fecdd3;
     border-radius:8px;padding:12px 16px;font-size:.88rem;
   }}
+  /* ── SeaTalk source pills, VIP / Friend badges, section dividers ── */
+  .st-src{{
+    display:inline-flex;align-items:center;
+    font-size:.7rem;font-weight:700;border-radius:4px;
+    padding:2px 7px;margin-right:6px;white-space:nowrap;vertical-align:middle;
+  }}
+  .st-src-group{{background:#EFF7FC;color:var(--teal);border:1px solid #bae6fd}}
+  .st-src-dm{{background:#f5f3ff;color:#7c3aed;border:1px solid #ddd6fe}}
+  .st-friend{{
+    display:inline-block;background:#fef9c3;color:#854d0e;
+    border:1px solid #fde68a;border-radius:4px;font-size:.65rem;
+    font-weight:700;padding:1px 5px;margin-left:4px;vertical-align:middle;
+  }}
+  .st-body strong.st-vip{{color:var(--primary)}}
+  .st-body .st-action{{color:var(--primary);font-weight:700}}
+  .st-section{{
+    display:flex;align-items:center;gap:8px;
+    margin:1rem 0 .4rem;padding-top:.75rem;
+    border-top:2px solid var(--border);
+  }}
+  .st-section:first-of-type{{border-top:none;margin-top:.2rem;padding-top:0}}
 
   /* ── Layout ── */
   .page{{max-width:940px;margin:28px auto;padding:0 18px 80px}}
@@ -488,6 +514,14 @@ function stMd(md) {{
       continue;
     }}
 
+    // P0/P1/P2 standalone section headers  e.g. **P0 (act today)**
+    var pSect = line.match(/^\\*\\*(P([012])[^*]*)\\*\\*\\s*$/);
+    if (pSect) {{
+      closeUl();
+      html += '<div class="st-section"><span class="p' + pSect[2] + '-badge" style="font-size:.75rem;padding:3px 10px">' + pSect[1] + '</span></div>';
+      continue;
+    }}
+
     // Paragraph
     closeUl();
     html += '<p>' + inlineMd(line) + '</p>';
@@ -497,16 +531,41 @@ function stMd(md) {{
 }}
 
 function inlineMd(s) {{
-  // Bold: **text**
-  s = s.replace(/\\*\\*(.+?)\\*\\*/g, '<strong>$1</strong>');
-  // Inline code: `text`
+  // Step 1: escape HTML special chars FIRST so user content never injects markup
+  s = s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+  // Step 2: source label pills  [Group: ...] and [DM: ...]
+  var friends = ['kel jin', 'han cheng'];
+  s = s.replace(/\\[Group:\\s*([^\\]]+)\\]/g, function(m, n) {{
+    return '<span class="st-src st-src-group">&#128101; ' + n.trim() + '</span>';
+  }});
+  s = s.replace(/\\[DM:\\s*([^\\]]+)\\]/g, function(m, n) {{
+    n = n.trim();
+    var isFriend = friends.some(function(f) {{ return n.toLowerCase().indexOf(f) !== -1; }});
+    var fb = isFriend ? ' <span class="st-friend">Friend :)</span>' : '';
+    return '<span class="st-src st-src-dm">&#128172; ' + n + '</span>' + fb;
+  }});
+
+  // Step 3: bold — highlight VIP names in orange
+  var vips = ['jianghong', 'hoi', 'fengc', 'feng c'];
+  s = s.replace(/\\*\\*(.+?)\\*\\*/g, function(m, t) {{
+    var isVip = vips.some(function(v) {{ return t.toLowerCase().indexOf(v) !== -1; }});
+    return isVip
+      ? '<strong class="st-vip">' + t + '</strong>'
+      : '<strong>' + t + '</strong>';
+  }});
+
+  // Step 4: inline code
   s = s.replace(/`([^`]+)`/g, '<code>$1</code>');
-  // Escape remaining < >
-  s = s.replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  // P0/P1/P2 badges inline (e.g. **P0** already bolded above)
+
+  // Step 5: P0/P1/P2 inline badges
   s = s.replace(/<strong>P0<\/strong>/g, '<span class="p0-badge">P0</span>');
   s = s.replace(/<strong>P1<\/strong>/g, '<span class="p1-badge">P1</span>');
   s = s.replace(/<strong>P2<\/strong>/g, '<span class="p2-badge">P2</span>');
+
+  // Step 6: Action label styling
+  s = s.replace(/<strong>Action:<\/strong>/g, '<span class="st-action">Action:</span>');
+
   return s;
 }}
 
