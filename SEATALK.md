@@ -38,7 +38,8 @@ A SeaTalk message is P0 when **any** of these are true:
 - It is a **direct (private) message from a VIP**: jianghong.liu, hoi, fengc — regardless of group
   size
 - It **mentions Shuning** (`@shuning.wang` / `@Shuning`) in any channel
-- Its content is related to a **key domain**: Swarm/OSP, SIP, FP&A, Budget, BPM
+- Its content is related to a **key domain**: Swarm, OSP, SIP, FP&A, Budget, BPM
+- It is from the group with name of **key domain**: Swarm, OSP, SIP, FP&A, Budget, BPM
 - It contains a **direct ask, deadline, escalation, or blocker** directed at Shuning's area
 - It is a **thread reply in a thread Shuning owns** (he is the original poster)
 
