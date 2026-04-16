@@ -56,13 +56,13 @@ Produce a standalone SeaTalk summary email using this exact structure:
 2–3 sentences: what requires action, biggest signal, who needs a reply.
 
 ## P0 — Act now
-- [DM / Group name] **Sender** — what was said — suggested action
+- **[DM/Group: Name]** **Sender** — what was said — suggested action
 
 ## P1 — Handle soon
-- [Group name] **Sender** — what was said — suggested action
+- **[Group: Name]** **Sender** — what was said — suggested action
 
 ## P2 — FYI
-- Brief bullets only (no detail needed)
+- **[Group: Name]** Brief bullet only (no detail needed)
 
 ## Action Items
 - [ ] Concrete next steps, with owner and deadline if mentioned in messages
