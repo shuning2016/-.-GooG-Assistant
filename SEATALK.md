@@ -62,17 +62,20 @@ A SeaTalk message is P2 when **all** of these are true:
 
 ### Friends rule
 Kel Jin and Han Cheng are personal friends, not work colleagues:
-- Label their messages with "Friend :)" after the source pill.
 - Do **not** classify as P1 just because it is a DM from them.
 - Classify P0 only if the message genuinely contains a key-domain topic or urgent work ask.
 - Otherwise P2.
+- Do **not** add a "Friend" label in the summary text — the web UI handles that automatically
+  via JavaScript detection.
 
-### Already-handled rule
-Omit a conversation entirely when **all** of these are true:
-- Shuning already replied (a message with `fromSelf=true` exists in that session/thread), AND
-- There are no messages in that session/thread timestamped **after** his last reply.
-
-Such threads are closed — no further action is needed.
+### Already-handled rule (CRITICAL — apply before writing output)
+For each session/thread, find Shuning's last message (`fromSelf=true`). If such a message
+exists AND there are **zero** messages in that session/thread timestamped **after** his last
+message:
+- **DO NOT INCLUDE** that conversation in the output at all.
+- Do not list it under P0, P1, or P2. Do not mention it. Completely omit it.
+- Examples: Shuning sent "ok" and nobody replied after → omit. Shuning shared a file and
+  nobody followed up → omit. Shuning acknowledged a request and nobody responded → omit.
 
 ### Suppressions
 Suppress entirely unless they contain a new risk, direct ask, or deadline:

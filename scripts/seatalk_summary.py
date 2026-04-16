@@ -32,6 +32,7 @@ from zoneinfo import ZoneInfo
 
 SGT = ZoneInfo("Asia/Singapore")
 RECIPIENT = "Shuning.wang@shopee.com"
+KEY_DOMAIN_GROUPS = "Swarm,OSP,SIP,FP&A,Budget,BPM"
 _DRIVE = os.path.expanduser(
     "~/Library/CloudStorage/GoogleDrive-shuning2016@gmail.com"
     "/My Drive/My Projects/Working Efficiency/use-seatalk"
@@ -85,16 +86,22 @@ P1 — when ANY of these are true (and not already P0):
 
 P2 — informational, general group message, no action required from Shuning.
 
-Friends rule — Kel Jin and Han Cheng are personal friends, not work colleagues:
-  • Label their messages as "Friend :)" after the source pill: [DM: Kel Jin] Friend :)
-  • Do NOT classify as P1 just because it is a DM.
+Friends — Kel Jin and Han Cheng are personal friends, not work colleagues:
+  • Do NOT classify as P1 just because it is a DM from them.
   • Only P0 if it genuinely contains a key-domain topic or urgent work ask.
   • Otherwise P2.
+  • Do NOT add any "Friend" label — the UI handles that automatically.
 
-Already-handled rule — omit a conversation if ALL of these are true:
-  • Shuning already replied (a message with fromSelf=true exists in that session/thread), AND
-  • There are no messages in that session/thread timestamped AFTER his last reply.
-  Such threads are closed — no further action is needed.
+CRITICAL — Already-handled filter (apply BEFORE writing the output):
+  For each session/thread in the data, find Shuning's last message (fromSelf=true).
+  If such a message exists AND there are ZERO messages in that session/thread with a
+  timestamp AFTER his last message:
+    → DO NOT INCLUDE THAT CONVERSATION IN THE OUTPUT AT ALL.
+    → Do not list it under P0, P1, or P2. Do not mention it. Completely omit it.
+  Examples of what to omit:
+    - Shuning sent "ok" and nobody replied after → omit
+    - Shuning shared a file and nobody replied after → omit
+    - Shuning acknowledged a request and nobody followed up → omit
 
 Suppress ONLY these (do not suppress key-domain group messages even if they look routine):
   • Automated bot notifications (CI/CD, monitoring, system alerts)
@@ -147,10 +154,10 @@ def read_messages(hours: int) -> tuple[list[dict], str]:
 
     now_sgt = datetime.now(SGT)
     since_sgt = now_sgt - timedelta(hours=hours)
-    out_file = f"/tmp/seatalk-summary-{now_sgt.strftime('%Y%m%d-%H%M')}.json"
 
     result = subprocess.run(
-        [sys.executable, reader, "--last-hours", str(hours), "--output", out_file],
+        [sys.executable, reader, "--last-hours", str(hours),
+         "--watch-groups", KEY_DOMAIN_GROUPS],
         capture_output=True,
         text=True,
         timeout=90,
@@ -160,9 +167,7 @@ def read_messages(hours: int) -> tuple[list[dict], str]:
             f"CDP reader exited {result.returncode}:\n{result.stderr.strip()}"
         )
 
-    with open(out_file) as f:
-        data = json.load(f)
-
+    data = json.loads(result.stdout)
     messages = data.get("messages", data) if isinstance(data, dict) else data
     window = (
         f"{since_sgt.strftime('%H:%M')} → {now_sgt.strftime('%H:%M SGT')} "
