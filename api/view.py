@@ -62,31 +62,36 @@ def _render_html(briefing_md: str, date_str: str) -> str:
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Daily Brief \u2014 {date_str}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root {{
-    --blue:    #1D6FE8;
-    --teal:    #0891b2;
+    --primary: #EE4D2D;
+    --primary-dark: #c73e24;
+    --teal:    #0080C6;
+    --navy:    #172B4D;
     --green:   #16a34a;
     --amber:   #d97706;
     --red:     #dc2626;
-    --bg:      #F5F6FA;
+    --bg:      #FFF5F3;
     --surface: #ffffff;
-    --text:    #1a1a2e;
+    --text:    #172B4D;
     --muted:   #6b7280;
     --border:  #e5e7eb;
     --header-h: 58px;
   }}
   *{{box-sizing:border-box;margin:0;padding:0}}
-  body{{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  body{{font-family:'Roboto',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
         background:var(--bg);color:var(--text);line-height:1.65;font-size:15px}}
 
   /* ── Navbar ── */
   .navbar{{
     position:sticky;top:0;z-index:200;height:var(--header-h);
-    background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);
+    background:linear-gradient(135deg,#EE4D2D 0%,#172B4D 100%);
     color:#fff;padding:0 28px;
     display:flex;align-items:center;gap:10px;
-    box-shadow:0 2px 10px rgba(0,0,0,.3);
+    box-shadow:0 2px 12px rgba(238,77,45,.35);
   }}
   .navbar-title{{font-size:1.05rem;font-weight:700;letter-spacing:.3px;flex:1}}
   .navbar-date{{
@@ -95,7 +100,7 @@ def _render_html(briefing_md: str, date_str: str) -> str:
   }}
   .navbar-tz{{font-size:.72rem;opacity:.5}}
   .run-btn{{
-    background:var(--blue);color:#fff;border:none;border-radius:6px;
+    background:var(--primary);color:#fff;border:none;border-radius:6px;
     padding:7px 16px;font-size:.82rem;font-weight:600;cursor:pointer;
     white-space:nowrap;transition:opacity .15s;letter-spacing:.2px;
   }}
@@ -124,12 +129,12 @@ def _render_html(briefing_md: str, date_str: str) -> str:
     position:sticky;top:var(--header-h);z-index:190;
     max-height:0;overflow:hidden;
     transition:max-height .35s ease,box-shadow .35s ease;
-    background:#ecfeff;border-bottom:2px solid var(--teal);
+    background:#EFF7FC;border-bottom:2px solid var(--teal);
     box-shadow:none;
   }}
   .st-drawer.open{{
     max-height:520px;
-    box-shadow:0 4px 16px rgba(8,145,178,.15);
+    box-shadow:0 4px 16px rgba(0,128,198,.15);
     overflow-y:auto;
   }}
   .st-inner{{
@@ -144,7 +149,7 @@ def _render_html(briefing_md: str, date_str: str) -> str:
     cursor:pointer;color:var(--teal);opacity:.7;line-height:1;padding:2px 6px;
   }}
   .st-close:hover{{opacity:1}}
-  .st-body h3{{font-size:.95rem;color:#164e63;margin:1rem 0 .3rem;font-weight:700}}
+  .st-body h3{{font-size:.95rem;color:#172B4D;margin:1rem 0 .3rem;font-weight:700}}
   .st-body p{{margin:.4rem 0;font-size:.88rem;color:#374151}}
   .st-body ul{{padding-left:1.3rem;margin:.3rem 0}}
   .st-body li{{font-size:.88rem;margin:.25rem 0;color:#374151}}
@@ -191,11 +196,11 @@ def _render_html(briefing_md: str, date_str: str) -> str:
   p{{margin:.5rem 0;color:var(--text)}}
   ul,ol{{padding-left:1.4rem;margin:.35rem 0}}
   li{{margin:.3rem 0}}
-  a{{color:var(--blue);text-decoration:none}}
+  a{{color:var(--primary);text-decoration:none}}
   a:hover{{text-decoration:underline}}
   blockquote{{
-    border-left:3px solid var(--blue);padding:8px 14px;
-    background:#f0f4ff;border-radius:0 6px 6px 0;
+    border-left:3px solid var(--primary);padding:8px 14px;
+    background:#fff0ec;border-radius:0 6px 6px 0;
     margin:.6rem 0;color:#374151;font-style:italic;
   }}
   hr{{border:none;border-top:1px solid var(--border);margin:1.2rem 0}}
@@ -209,8 +214,8 @@ def _render_html(briefing_md: str, date_str: str) -> str:
   /* ── Tables ── */
   table{{border-collapse:collapse;width:100%;margin:.8rem 0;font-size:.88rem}}
   th{{
-    background:#f4f6f9;font-weight:600;padding:9px 13px;
-    border:1px solid var(--border);text-align:left;color:var(--text);
+    background:#FDF1EE;font-weight:600;padding:9px 13px;
+    border:1px solid var(--border);text-align:left;color:var(--navy);
   }}
   td{{padding:8px 13px;border:1px solid var(--border);vertical-align:top}}
   tr:nth-child(even) td{{background:#f9fafb}}
@@ -239,7 +244,7 @@ def _render_html(briefing_md: str, date_str: str) -> str:
   }}
 
   /* ── Checkboxes ── */
-  input[type=checkbox]{{margin-right:7px;accent-color:var(--blue);width:14px;height:14px}}
+  input[type=checkbox]{{margin-right:7px;accent-color:var(--primary);width:14px;height:14px}}
 
   /* ── Stale brief banner ── */
   .stale-banner{{
@@ -261,17 +266,17 @@ def _render_html(briefing_md: str, date_str: str) -> str:
 
   /* ── Delta / What Changed section ── */
   .delta-header{{
-    color:var(--blue) !important;
-    border-bottom-color:var(--blue) !important;
+    color:var(--primary) !important;
+    border-bottom-color:var(--primary) !important;
   }}
   .delta-body{{
-    background:#f0f4ff;border-radius:8px;padding:10px 14px;margin:.4rem 0;
+    background:#fff0ec;border-radius:8px;padding:10px 14px;margin:.4rem 0;
   }}
 
   /* ── Back to top ── */
   .btt{{
     position:fixed;bottom:26px;right:26px;
-    background:var(--blue);color:#fff;border:none;border-radius:50%;
+    background:var(--primary);color:#fff;border:none;border-radius:50%;
     width:40px;height:40px;cursor:pointer;font-size:1.1rem;
     box-shadow:0 2px 8px rgba(0,0,0,.2);
     display:flex;align-items:center;justify-content:center;opacity:.75;
@@ -290,7 +295,7 @@ def _render_html(briefing_md: str, date_str: str) -> str:
 </head>
 <body>
 <nav class="navbar">
-  <span class="navbar-title">&#128203; Daily Brief</span>
+  <span class="navbar-title">&#9889; Daily Brief</span>
   <span class="navbar-date">{date_str}</span>
   <span class="navbar-tz">Asia/Singapore</span>
   <button class="st-btn" id="stBtn" onclick="checkSeatalk()">
@@ -333,7 +338,7 @@ function checkSeatalk() {{
   var btn = document.getElementById('stBtn');
   btn.disabled = true;
   btn.classList.add('loading');
-  document.getElementById('stBody').innerHTML = '<p style="color:#0891b2;font-size:.85rem">Fetching SeaTalk messages\u2026</p>';
+  document.getElementById('stBody').innerHTML = '<p style="color:#0080C6;font-size:.85rem">Fetching SeaTalk messages\u2026</p>';
   document.getElementById('stMeta').textContent = '';
   openDrawer();
 
@@ -393,7 +398,7 @@ function stMd(md) {{
     }}
     if (line.startsWith('## ')) {{
       closeUl();
-      html += '<h3 style="font-size:.97rem;color:#164e63;margin:1.1rem 0 .3rem">' + inlineMd(line.slice(3)) + '</h3>';
+      html += '<h3 style="font-size:.97rem;color:#172B4D;margin:1.1rem 0 .3rem">' + inlineMd(line.slice(3)) + '</h3>';
       continue;
     }}
     if (line.startsWith('# ')) {{
@@ -526,10 +531,13 @@ def _not_found(date_str: str) -> str:
 <head>
 <meta charset="UTF-8">
 <title>No brief \u2014 {date_str}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-  :root{{--blue:#1D6FE8;--bg:#F5F6FA;--text:#1a1a2e}}
+  :root{{--primary:#EE4D2D;--bg:#FFF5F3;--text:#172B4D}}
   *{{box-sizing:border-box;margin:0;padding:0}}
-  body{{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  body{{font-family:'Roboto',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
         background:var(--bg);color:var(--text);min-height:100vh;
         display:flex;align-items:center;justify-content:center}}
   .box{{text-align:center;padding:48px 32px;max-width:420px}}
@@ -538,7 +546,7 @@ def _not_found(date_str: str) -> str:
   p{{color:#6b7280;margin-bottom:28px;font-size:.92rem;line-height:1.5}}
   .hint{{color:#9ca3af;font-size:.85rem;margin-top:16px}}
   .run-btn{{
-    background:var(--blue);color:#fff;border:none;border-radius:8px;
+    background:var(--primary);color:#fff;border:none;border-radius:8px;
     padding:12px 28px;font-size:.95rem;font-weight:600;cursor:pointer;
     transition:opacity .15s;letter-spacing:.2px;
   }}
@@ -548,9 +556,9 @@ def _not_found(date_str: str) -> str:
 </head>
 <body>
 <div class="box">
-  <div class="icon">&#128203;</div>
-  <h2>No brief for {date_str}</h2>
-  <p>Briefings are stored for 7 days.<br>The scheduled cron runs daily at 8:00 AM SGT.</p>
+  <div class="icon">&#9889;</div>
+  <h2>No brief yet for {date_str}</h2>
+  <p>Your daily briefing will be ready at 8:00 AM SGT.<br>Briefings are kept for 7 days — check back soon!</p>
   {cta}
 </div>
 </body>
