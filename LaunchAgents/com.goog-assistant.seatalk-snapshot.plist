@@ -28,7 +28,7 @@
   <key>ProgramArguments</key>
   <array>
     <string>/usr/bin/python3</string>
-    <string>/Users/shuning.wang/Library/CloudStorage/GoogleDrive-shuning2016@gmail.com/My Drive/My Projects/Working Efficiency/GooG Assistant/scripts/seatalk_snapshot.py</string>
+    <string>/Users/shuning.wang/.goog-assistant/scripts/seatalk_snapshot.py</string>
     <string>--hours</string>
     <string>24</string>
   </array>
@@ -41,13 +41,14 @@
   </dict>
 
   <key>WorkingDirectory</key>
-  <string>/Users/shuning.wang/Library/CloudStorage/GoogleDrive-shuning2016@gmail.com/My Drive/My Projects/Working Efficiency/GooG Assistant</string>
+  <string>/Users/shuning.wang/.goog-assistant</string>
 
   <key>EnvironmentVariables</key>
   <dict>
-    <!-- PATH must include the Python that has upstash-redis installed -->
     <key>PATH</key>
     <string>/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    <key>SEATALK_SKILL_ROOT</key>
+    <string>/Users/shuning.wang/.goog-assistant/use-seatalk</string>
   </dict>
 
   <key>StandardOutPath</key>

@@ -38,7 +38,7 @@
   <key>ProgramArguments</key>
   <array>
     <string>/bin/bash</string>
-    <string>/Users/shuning.wang/Library/CloudStorage/GoogleDrive-shuning2016@gmail.com/My Drive/My Projects/Working Efficiency/GooG Assistant/scripts/seatalk_summary_dispatch.sh</string>
+    <string>/Users/shuning.wang/.goog-assistant/scripts/seatalk_summary_dispatch.sh</string>
   </array>
 
   <!-- Fire at 10:00, 12:00, 15:00, 19:00 local time (SGT when Mac is in Asia/Singapore) -->
@@ -63,12 +63,14 @@
   </array>
 
   <key>WorkingDirectory</key>
-  <string>/Users/shuning.wang/Library/CloudStorage/GoogleDrive-shuning2016@gmail.com/My Drive/My Projects/Working Efficiency/GooG Assistant</string>
+  <string>/Users/shuning.wang/.goog-assistant</string>
 
   <key>EnvironmentVariables</key>
   <dict>
     <key>PATH</key>
     <string>/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    <key>SEATALK_SKILL_ROOT</key>
+    <string>/Users/shuning.wang/.goog-assistant/use-seatalk</string>
   </dict>
 
   <key>StandardOutPath</key>
