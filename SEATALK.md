@@ -73,6 +73,16 @@ SEATALK_ADMIN_IDS=shuning.wang@shopee.com,...
 ```
 Leave blank to monitor all groups/buddies visible in the running client.
 
+## Formatting rules (applies to all SeaTalk output)
+
+These rules apply to every SeaTalk section — inline daily brief, scheduled emails, and standalone summaries:
+
+- **Never use HTML tags** (`<strong>`, `<em>`, `<b>`, etc.). Use markdown only.
+- **Bold VIP names** with `**Name**` — jianghong.liu, hoi, fengc, and anyone named explicitly as a VIP.
+- **Bold group/channel names** — wrap in `**[Group: Name]**` or `**[DM: Name]**`.
+- **Use P0 / P1 / P2 section headers** — never inline-label priorities with `(act today)` or similar phrases inside a bullet.
+- Each bullet: `**[Group/DM: Name]** **Sender** — what was said — suggested action`
+
 ## SeaTalk summary email format
 Each scheduled summary (10:00 / 12:00 / 15:00 / 19:00 SGT) follows this structure:
 
@@ -84,17 +94,39 @@ Each scheduled summary (10:00 / 12:00 / 15:00 / 19:00 SGT) follows this structur
 2–3 sentences covering: what requires action, biggest signal, who needs a reply.
 
 ### P0 — Act now
-- [DM/Group name] **Sender** — summary — suggested action
+- **[DM/Group: Name]** **Sender** — summary — suggested action
 
 ### P1 — Handle soon
-- [Group name] **Sender** — summary — suggested action
+- **[Group: Name]** **Sender** — summary — suggested action
 
 ### P2 — FYI
-- Brief bullets, no detail needed
+- **[Group: Name]** Brief bullet, no detail needed
 
 ### Action Items
 - [ ] Concrete next steps for Shuning, with owner and deadline if mentioned
 ```
+
+## SeaTalk Activity section format (daily brief inline)
+
+When including a SeaTalk Activity section in the daily brief, use this exact structure:
+
+```
+## SeaTalk Activity
+
+### P0 — Act now
+- **[Group/DM: Name]** **Sender** — what was said — **suggested action**
+
+### P1 — Handle soon
+- **[Group/DM: Name]** **Sender** — what was said — suggested action
+
+### P2 — FYI
+- **[Group/DM: Name]** Brief bullet only
+
+### Action Items
+- [ ] Concrete next steps, with owner and deadline if mentioned
+```
+
+If there are no P0 or P1 items: state that explicitly — do not pad.
 
 ## Environment variables required
 These must be set in `~/.goog-assistant.env` (local) or as Vercel environment variables (cloud):

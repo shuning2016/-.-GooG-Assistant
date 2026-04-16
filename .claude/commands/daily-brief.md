@@ -244,6 +244,18 @@ Use this default rubric.
 - Lower-risk follow-up
 - Items that can wait beyond the next 2 days
 
+## Step 6b: include SeaTalk Activity section (if snapshot available)
+
+If a SeaTalk snapshot was pushed to Redis today (by `seatalk_snapshot.py` at 07:50 SGT), read it and include a **SeaTalk Activity** section in the briefing. Follow the format and triage rules in `SEATALK.md` exactly.
+
+**Formatting rules (mandatory):**
+- Use `### P0 — Act now`, `### P1 — Handle soon`, `### P2 — FYI` as sub-headers — never inline priority labels like `(act today)`.
+- Bold VIP names: `**Jianghong**`, `**Hoi**`, `**Fengc**`.
+- Bold group/channel names: `**[Group: CB BPM Lead]**`, `**[DM: Nicholas Lim]**`.
+- One bullet per message: `**[Group/DM: Name]** **Sender** — what was said — suggested action`
+- Use markdown bold (`**text**`) only. **Never use HTML tags** (`<strong>`, `<em>`, etc.).
+- If the snapshot is unavailable, note: `SeaTalk snapshot unavailable (seatalk_snapshot.py may not have run at 07:50 SGT).`
+
 ## Step 7: produce the briefing
 The final answer should be crisp, action-oriented, and easy to skim.
 
