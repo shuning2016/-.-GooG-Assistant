@@ -24,6 +24,10 @@ from zoneinfo import ZoneInfo
 
 SGT = ZoneInfo("Asia/Singapore")
 DEFAULT_HOURS = 24
+# Group-name substrings that are always captured regardless of Shuning's participation.
+# Any group whose name contains one of these words (case-insensitive) is treated as a
+# key-domain group and all its messages are included in the snapshot.
+KEY_DOMAIN_GROUPS = "Swarm,OSP,SIP,FP&A,Budget,BPM"
 # Default path mirrors the user's Google Drive layout; override with SEATALK_SKILL_ROOT
 _DRIVE = os.path.expanduser(
     "~/Library/CloudStorage/GoogleDrive-shuning2016@gmail.com"
@@ -60,7 +64,8 @@ def read_messages(hours: int) -> list[dict]:
         )
 
     result = subprocess.run(
-        [sys.executable, reader, "--last-hours", str(hours)],
+        [sys.executable, reader, "--last-hours", str(hours),
+         "--watch-groups", KEY_DOMAIN_GROUPS],
         capture_output=True,
         text=True,
         timeout=90,

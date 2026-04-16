@@ -85,6 +85,17 @@ P1 — when ANY of these are true (and not already P0):
 
 P2 — informational, general group message, no action required from Shuning.
 
+Friends rule — Kel Jin and Han Cheng are personal friends, not work colleagues:
+  • Label their messages as "Friend :)" after the source pill: [DM: Kel Jin] Friend :)
+  • Do NOT classify as P1 just because it is a DM.
+  • Only P0 if it genuinely contains a key-domain topic or urgent work ask.
+  • Otherwise P2.
+
+Already-handled rule — omit a conversation if ALL of these are true:
+  • Shuning already replied (a message with fromSelf=true exists in that session/thread), AND
+  • There are no messages in that session/thread timestamped AFTER his last reply.
+  Such threads are closed — no further action is needed.
+
 Suppress ONLY these (do not suppress key-domain group messages even if they look routine):
   • Automated bot notifications (CI/CD, monitoring, system alerts)
   • Recurring daily report bots with no new action
