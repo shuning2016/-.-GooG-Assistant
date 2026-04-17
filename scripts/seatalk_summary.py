@@ -75,7 +75,8 @@ Produce a standalone SeaTalk summary email using this exact structure — no HTM
 Omit any section that has no items.
 
 P0 — classify as P0 when ANY of these are true:
-  1. Direct private message (DM) from a VIP (jianghong.liu, hoi, fengc) — regardless of content
+  1. Any 1:1 direct message (DM) from any person — regardless of VIP status or content
+     EXCEPTION: personal friends (Kel Jin, Han Cheng) — apply the Friends rule below instead.
   2. Message @mentions Shuning (@shuning.wang or @Shuning) in any group
   3. Message CONTENT is about a key domain: Swarm, OSP, SIP, FP&A, Budget, or BPM
   4. Message is FROM A GROUP whose name contains a key domain word — e.g. a group called
@@ -85,7 +86,6 @@ P0 — classify as P0 when ANY of these are true:
   6. Thread reply in a thread that Shuning originally started (he is the OP)
 
 P1 — when ANY of these are true (and not already P0):
-  • Direct private message from a non-VIP colleague
   • Reply in a thread where Shuning previously posted (but is not the OP)
   • Message about a meeting, deadline, deliverable, approval, or contract touching Shuning's work
   • Group message in a channel with fewer than 20 members where Shuning's input is implied
@@ -93,8 +93,8 @@ P1 — when ANY of these are true (and not already P0):
 P2 — informational, general group message, no action required from Shuning.
 
 Friends — Kel Jin and Han Cheng are personal friends, not work colleagues:
-  • Do NOT classify as P1 just because it is a DM from them.
-  • Only P0 if it genuinely contains a key-domain topic or urgent work ask.
+  • DMs from them are NOT automatically P0/P1.
+  • Only P0 if the message genuinely contains a key-domain topic or urgent work ask.
   • Otherwise P2.
   • Do NOT add any "Friend" label — the UI handles that automatically.
 
@@ -122,8 +122,14 @@ Waiting for Reply rules:
   • Detect NEW pending items (Step 1a above) and label them [NEW].
   • Previously-tracked items (provided in context below) that still have no reply in the
     current messages → keep in this section, label [day N] where N = days since first seen.
-  • Previously-tracked items that NOW have a reply in the messages → RESOLVED: omit from
-    this section (they appear in P0/P1/P2 as normal if still actionable).
+  • RESOLUTION RULE — a previously-tracked item is RESOLVED only if:
+      - DM: the other person has explicitly replied to Shuning's message.
+      - GROUP: the specific person Shuning @mentioned or directly asked has replied IN THAT
+        SAME THREAD. General new posts by OTHER group members do NOT resolve the item.
+        If Shuning asked @Yang Wenxiao something and only others posted, still PENDING.
+    When in doubt → keep as pending. False-positive reminders beat silent drops.
+  • Previously-tracked items that are RESOLVED → omit from this section (appear in P0/P1/P2
+    if still actionable).
   • Omit this section entirely if nothing is pending.
 
 At the very END of your response, append this machine-readable block (it will be stripped before display):
