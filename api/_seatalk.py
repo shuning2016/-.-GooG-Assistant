@@ -27,6 +27,9 @@ SeaTalk context:
 Produce a compact SeaTalk section to embed in the daily briefing.
 Use this EXACT markdown format — no HTML tags:
 
+**⏳ Waiting for Reply**
+- [Group/DM: Name] What Shuning asked — pending since HH:MM SGT
+
 **P0 (act today)**
 - [Group: Name] **Sender** — what was said — suggested action
 
@@ -36,11 +39,12 @@ Use this EXACT markdown format — no HTML tags:
 **P2 (FYI)**
 - [Group: Name] Brief bullet only
 
-Use [DM: Name] for private messages, [Group: Name] for group messages.
+Omit any section that has no items. Use [DM: Name] for private messages, [Group: Name] for group messages.
 Bold VIP names with **Name**.
 
 P0 — classify as P0 when ANY of these are true:
-  1. Direct private message (DM) from a VIP (jianghong.liu, hoi, fengc) — regardless of content
+  1. Any 1:1 direct message (DM) from any person — regardless of VIP status or content
+     EXCEPTION: personal friends (Kel Jin, Han Cheng) — apply the Friends rule below instead.
   2. Message @mentions Shuning (@shuning.wang or @Shuning) in any group
   3. Message CONTENT is about a key domain: Swarm, OSP, SIP, FP&A, Budget, or BPM
   4. Message is FROM A GROUP whose name contains a key domain word — e.g. a group called
@@ -50,7 +54,6 @@ P0 — classify as P0 when ANY of these are true:
   6. Thread reply in a thread that Shuning originally started (he is the OP)
 
 P1 — when ANY of these are true (and not already P0):
-  • Direct private message from a non-VIP colleague
   • Reply in a thread where Shuning previously posted (but is not the OP)
   • Message about a meeting, deadline, deliverable, approval, or contract touching Shuning's work
   • Group message in a channel with fewer than 20 members where Shuning's input is implied
@@ -58,21 +61,47 @@ P1 — when ANY of these are true (and not already P0):
 P2 — informational, general group message, no action required from Shuning.
 
 Friends — Kel Jin and Han Cheng are personal friends, not work colleagues:
-  • Do NOT classify as P1 just because it is a DM from them.
-  • Only P0 if it genuinely contains a key-domain topic or urgent work ask.
+  • DMs from them are NOT automatically P0/P1.
+  • Only P0 if the message genuinely contains a key-domain topic or urgent work ask.
   • Otherwise P2.
   • Do NOT add any "Friend" label — the UI handles that automatically.
 
-CRITICAL — Already-handled filter (apply BEFORE writing the output):
-  For each session/thread in the data, find Shuning's last message (fromSelf=true).
-  If such a message exists AND there are ZERO messages in that session/thread with a
-  timestamp AFTER his last message:
-    → DO NOT INCLUDE THAT CONVERSATION IN THE OUTPUT AT ALL.
-    → Do not list it under P0, P1, or P2. Do not mention it. Completely omit it.
-  Examples of what to omit:
-    - Shuning sent "ok" and nobody replied after → omit
-    - Shuning shared a file and nobody replied after → omit
-    - Shuning acknowledged a request and nobody followed up → omit
+CRITICAL — Conversation filters (apply IN ORDER before writing output):
+
+  Step 1 — Shuning-replied-last split:
+    For each session/thread, find Shuning's last message (fromSelf=true).
+    If such a message exists AND there are ZERO messages after it in that thread:
+      a) If his last message is a SUBSTANTIVE ASK, REQUEST, ESCALATION, or ASSIGNMENT
+         (e.g. "can you check X?", "please update Y by Z", "I need A from you"):
+         → Add to **⏳ Waiting for Reply** section. Do NOT include in P0/P1/P2.
+      b) If his last message is an ACKNOWLEDGEMENT, AGREEMENT, or SIMPLE REPLY
+         ("ok", "noted", "sure", "thanks", "👍", or emoji only):
+         → OMIT entirely from all sections.
+
+  Step 2 — Mutually-resolved filter:
+    Also omit a conversation when ALL of these hold:
+      • The last few messages form a clear question → decision → confirmation chain.
+      • Shuning's role was to agree, confirm, or acknowledge (NOT to ask or escalate).
+      • The other party's final message is a closure signal ("ok", "noted", "confirmed",
+        "thanks", "sounds good", "will do", "sure", "👍", or equivalent).
+      • No open question, outstanding deliverable, or new ask remains in the thread.
+    → OMIT entirely. Example: "Move to Monday?" → Shuning: "sure" → Other: "confirmed" → OMIT.
+
+Waiting for Reply — detect and list BEFORE P0:
+  After applying the filters above, threads where Shuning's last message is a substantive ask
+  with zero replies go under **⏳ Waiting for Reply**.
+  Format: - [Source] What Shuning asked/sent — pending since HH:MM SGT
+
+  RESOLUTION RULE for previously-tracked items (provided as context):
+  A previously-tracked pending item is RESOLVED only if:
+    • For DM conversations: the other person has explicitly replied to Shuning's message.
+    • For GROUP conversations: the specific person Shuning @mentioned or directly asked has
+      explicitly replied to his question IN THAT SAME THREAD. General new activity in the
+      group by OTHER people does NOT resolve a pending item. If Shuning asked @Yang Wenxiao
+      something and only others posted, the item is STILL PENDING.
+  When in doubt → keep as pending. False-positive reminders are better than silent drops.
+
+  Omit this section if nothing is pending.
 
 Suppress ONLY these (do not suppress key-domain group messages even if they look routine):
   • Automated bot notifications (CI/CD, monitoring, system alerts)
@@ -99,6 +128,9 @@ Produce a standalone SeaTalk summary email using this exact structure — no HTM
 ## Executive Snapshot
 2–3 sentences: what requires action, biggest signal, who needs a reply.
 
+## ⏳ Waiting for Reply
+- [Group/DM: Name] What Shuning asked — pending since HH:MM SGT  [NEW] or [day N]
+
 ## P0 — Act now
 - [DM/Group: Name] **Sender** — what was said — suggested action
 
@@ -111,8 +143,11 @@ Produce a standalone SeaTalk summary email using this exact structure — no HTM
 ## Action Items
 - [ ] Concrete next steps, with owner and deadline if mentioned
 
+Omit any section that has no items.
+
 P0 — classify as P0 when ANY of these are true:
-  1. Direct private message (DM) from a VIP (jianghong.liu, hoi, fengc) — regardless of content
+  1. Any 1:1 direct message (DM) from any person — regardless of VIP status or content
+     EXCEPTION: personal friends (Kel Jin, Han Cheng) — apply the Friends rule below instead.
   2. Message @mentions Shuning (@shuning.wang or @Shuning) in any group
   3. Message CONTENT is about a key domain: Swarm, OSP, SIP, FP&A, Budget, or BPM
   4. Message is FROM A GROUP whose name contains a key domain word — e.g. a group called
@@ -122,7 +157,6 @@ P0 — classify as P0 when ANY of these are true:
   6. Thread reply in a thread that Shuning originally started (he is the OP)
 
 P1 — when ANY of these are true (and not already P0):
-  • Direct private message from a non-VIP colleague
   • Reply in a thread where Shuning previously posted (but is not the OP)
   • Message about a meeting, deadline, deliverable, approval, or contract touching Shuning's work
   • Group message in a channel with fewer than 20 members where Shuning's input is implied
@@ -130,21 +164,48 @@ P1 — when ANY of these are true (and not already P0):
 P2 — informational, general group message, no action required from Shuning.
 
 Friends — Kel Jin and Han Cheng are personal friends, not work colleagues:
-  • Do NOT classify as P1 just because it is a DM from them.
-  • Only P0 if it genuinely contains a key-domain topic or urgent work ask.
+  • DMs from them are NOT automatically P0/P1.
+  • Only P0 if the message genuinely contains a key-domain topic or urgent work ask.
   • Otherwise P2.
   • Do NOT add any "Friend" label — the UI handles that automatically.
 
-CRITICAL — Already-handled filter (apply BEFORE writing the output):
-  For each session/thread in the data, find Shuning's last message (fromSelf=true).
-  If such a message exists AND there are ZERO messages in that session/thread with a
-  timestamp AFTER his last message:
-    → DO NOT INCLUDE THAT CONVERSATION IN THE OUTPUT AT ALL.
-    → Do not list it under P0, P1, or P2. Do not mention it. Completely omit it.
-  Examples of what to omit:
-    - Shuning sent "ok" and nobody replied after → omit
-    - Shuning shared a file and nobody replied after → omit
-    - Shuning acknowledged a request and nobody followed up → omit
+CRITICAL — Conversation filters (apply IN ORDER before writing output):
+
+  Step 1 — Shuning-replied-last split:
+    For each session/thread, find Shuning's last message (fromSelf=true).
+    If such a message exists AND there are ZERO messages after it in that thread:
+      a) If his last message is a SUBSTANTIVE ASK, REQUEST, ESCALATION, or ASSIGNMENT:
+         → Add to ## ⏳ Waiting for Reply. Do NOT include in P0/P1/P2.
+      b) If his last message is an ACKNOWLEDGEMENT, AGREEMENT, or SIMPLE REPLY
+         ("ok", "noted", "sure", "thanks", "👍", emoji only):
+         → OMIT entirely from all sections.
+
+  Step 2 — Mutually-resolved filter:
+    Also omit a conversation when ALL of these hold:
+      • The last few messages form a clear question → decision → confirmation chain.
+      • Shuning's role was to agree, confirm, or acknowledge (NOT to ask or escalate).
+      • The other party's final message is a closure signal ("ok", "noted", "confirmed",
+        "thanks", "sounds good", "will do", "sure", "👍", or equivalent).
+      • No open question, outstanding deliverable, or new ask remains in the thread.
+    → OMIT entirely. Example: "Move to Monday?" → Shuning: "sure" → Other: "confirmed" → OMIT.
+
+Waiting for Reply rules:
+  • Detect NEW pending items (Step 1a above) and label them [NEW].
+  • Previously-tracked items (provided in context below) that still have no reply in the
+    current messages → keep in this section, label [day N] where N = days since first seen.
+  • RESOLUTION RULE — a previously-tracked item is RESOLVED only if:
+      - DM: the other person has explicitly replied to Shuning's message.
+      - GROUP: the specific person Shuning @mentioned or directly asked has replied IN THAT
+        SAME THREAD. General new posts by OTHER group members do NOT resolve the item.
+        If Shuning asked @Yang Wenxiao something and only others posted, still PENDING.
+    When in doubt → keep as pending. False-positive reminders beat silent drops.
+  • Previously-tracked items that are RESOLVED → omit from this section (appear in P0/P1/P2
+    if still actionable).
+  • Omit this section entirely if nothing is pending.
+
+At the very END of your response, append this machine-readable block (it will be stripped before display):
+<!-- PENDING_ITEMS: [{"source":"[Group/DM: Name]","summary":"What Shuning asked","since":"HH:MM SGT YYYY-MM-DD"}] -->
+Use an empty array if nothing is pending: <!-- PENDING_ITEMS: [] -->
 
 Suppress ONLY these (do not suppress key-domain group messages even if they look routine):
   • Automated bot notifications (CI/CD, monitoring, system alerts)
@@ -168,6 +229,57 @@ def format_seatalk_payload(messages: list[dict], window: str) -> str:
         f"MESSAGES ({len(messages)} total):\n"
         f"{json.dumps(messages, indent=2, default=str)}\n"
     )
+
+
+# ─── Pending-items persistence ───────────────────────────────────────────────
+
+def load_pending_items() -> list[dict]:
+    """
+    Load previously-tracked 'waiting for reply' items from Redis.
+    Returns empty list on any failure (never raises).
+    """
+    try:
+        from upstash_redis import Redis
+
+        r = Redis(
+            url=os.environ["UPSTASH_REDIS_REST_URL"],
+            token=os.environ["UPSTASH_REDIS_REST_TOKEN"],
+        )
+        raw = r.get("seatalk-pending")
+        if not raw:
+            return []
+        data = json.loads(raw) if isinstance(raw, str) else raw
+        return data if isinstance(data, list) else []
+    except Exception:
+        return []
+
+
+def save_pending_items(items: list[dict]) -> None:
+    """
+    Persist pending items to Redis (TTL: 7 days).
+    Never raises — failures are silent so the main run always completes.
+    """
+    try:
+        from upstash_redis import Redis
+
+        r = Redis(
+            url=os.environ["UPSTASH_REDIS_REST_URL"],
+            token=os.environ["UPSTASH_REDIS_REST_TOKEN"],
+        )
+        r.set("seatalk-pending", json.dumps(items, default=str), ex=7 * 24 * 3600)
+    except Exception:
+        pass
+
+
+def format_pending_context(items: list[dict]) -> str:
+    """Format previously-tracked pending items as a context block for the Claude prompt."""
+    if not items:
+        return ""
+    lines = ["Previously-tracked items still waiting for a reply (check if now resolved):"]
+    for item in items:
+        since = item.get("since", "unknown")
+        lines.append(f"  - {item.get('source', '')} {item.get('summary', '')} — since {since}")
+    return "\n".join(lines)
 
 
 # ─── Redis snapshot (Vercel-side read) ───────────────────────────────────────
