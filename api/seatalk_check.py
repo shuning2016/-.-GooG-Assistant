@@ -35,7 +35,10 @@ from http.server import BaseHTTPRequestHandler
 
 sys.path.insert(0, os.path.dirname(__file__))
 from _session import COOKIE_NAME, parse_cookies, verify_cookie
-from _seatalk import fetch_seatalk_snapshot, format_seatalk_payload, SEATALK_BRIEF_PROMPT
+from _seatalk import (
+    fetch_seatalk_snapshot, format_seatalk_payload, SEATALK_BRIEF_PROMPT,
+    load_pending_items, format_pending_context,
+)
 
 import anthropic
 
@@ -74,17 +77,18 @@ def _generate(messages: list[dict], date_str: str, now_sgt: datetime) -> str:
     window = f"SeaTalk snapshot for {date_str} (checked at {now_sgt.strftime('%H:%M SGT')})"
     payload = format_seatalk_payload(messages, window)
 
+    # Inject previously-tracked pending items so Claude can mark them resolved or carry them forward
+    pending_ctx = format_pending_context(load_pending_items())
+    user_content = f"Summarise these SeaTalk messages:\n\n{payload}"
+    if pending_ctx:
+        user_content += f"\n\n{pending_ctx}"
+
     client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
     msg = client.messages.create(
         model="claude-opus-4-6",
         max_tokens=1024,
         system=SEATALK_BRIEF_PROMPT,
-        messages=[
-            {
-                "role": "user",
-                "content": f"Summarise these SeaTalk messages:\n\n{payload}",
-            }
-        ],
+        messages=[{"role": "user", "content": user_content}],
     )
     return msg.content[0].text
 
