@@ -26,6 +26,7 @@ Requires a valid Google session cookie (set by /api/auth).
 
 import json
 import os
+import subprocess
 import sys
 from datetime import datetime
 from urllib.parse import parse_qs, urlparse
@@ -39,6 +40,33 @@ from _seatalk import fetch_seatalk_snapshot, format_seatalk_payload, SEATALK_BRI
 import anthropic
 
 SGT = ZoneInfo("Asia/Singapore")
+
+_SNAPSHOT_SCRIPT = os.path.join(
+    os.path.dirname(__file__), "..", "scripts", "seatalk_snapshot.py"
+)
+
+
+def _try_run_snapshot(date_str: str) -> list[dict] | None:
+    """
+    Attempt to run seatalk_snapshot.py on-demand (requires local CDP access).
+    Returns the messages list if successful, None otherwise.
+    """
+    script = os.path.abspath(_SNAPSHOT_SCRIPT)
+    if not os.path.exists(script):
+        return None
+    try:
+        result = subprocess.run(
+            [sys.executable, script, "--hours", "24"],
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+        if result.returncode != 0:
+            return None
+        # Script pushed to Redis — now fetch it
+        return fetch_seatalk_snapshot(date_str)
+    except Exception:
+        return None
 
 
 def _generate(messages: list[dict], date_str: str, now_sgt: datetime) -> str:
@@ -81,15 +109,18 @@ class handler(BaseHTTPRequestHandler):
             self._json(400, {"ok": False, "error": "Invalid date. Use YYYY-MM-DD.", "message_count": 0})
             return
 
-        # ── Fetch snapshot from Redis ─────────────────────────────────────────
+        # ── Fetch snapshot from Redis (auto-refresh if missing) ───────────────
         messages = fetch_seatalk_snapshot(date_str)
+        if messages is None:
+            # No pre-scheduled snapshot — try running the script on-demand
+            messages = _try_run_snapshot(date_str)
         if messages is None:
             self._json(200, {
                 "ok": False,
                 "error": (
-                    f"No SeaTalk snapshot found for {date_str}. "
-                    "The seatalk_snapshot.py script must run locally at 07:50 SGT "
-                    "to populate the snapshot before this check can work."
+                    f"No SeaTalk snapshot found for {date_str} and the on-demand "
+                    "fetch failed (SeaTalk must be open in Chrome with CDP accessible). "
+                    "Run: python3 scripts/seatalk_snapshot.py"
                 ),
                 "message_count": 0,
             })
