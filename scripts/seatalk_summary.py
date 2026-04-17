@@ -22,6 +22,7 @@ Environment (from ~/.goog-assistant.env or shell environment):
 import argparse
 import json
 import os
+import re
 import smtplib
 import subprocess
 import sys
@@ -56,6 +57,9 @@ Produce a standalone SeaTalk summary email using this exact structure — no HTM
 ## Executive Snapshot
 2–3 sentences: what requires action, biggest signal, who needs a reply.
 
+## ⏳ Waiting for Reply
+- [Group/DM: Name] What Shuning asked — pending since HH:MM SGT  [NEW] or [day N]
+
 ## P0 — Act now
 - [DM/Group: Name] **Sender** — what was said — suggested action
 
@@ -67,6 +71,8 @@ Produce a standalone SeaTalk summary email using this exact structure — no HTM
 
 ## Action Items
 - [ ] Concrete next steps, with owner and deadline if mentioned in messages
+
+Omit any section that has no items.
 
 P0 — classify as P0 when ANY of these are true:
   1. Direct private message (DM) from a VIP (jianghong.liu, hoi, fengc) — regardless of content
@@ -92,16 +98,37 @@ Friends — Kel Jin and Han Cheng are personal friends, not work colleagues:
   • Otherwise P2.
   • Do NOT add any "Friend" label — the UI handles that automatically.
 
-CRITICAL — Already-handled filter (apply BEFORE writing the output):
-  For each session/thread in the data, find Shuning's last message (fromSelf=true).
-  If such a message exists AND there are ZERO messages in that session/thread with a
-  timestamp AFTER his last message:
-    → DO NOT INCLUDE THAT CONVERSATION IN THE OUTPUT AT ALL.
-    → Do not list it under P0, P1, or P2. Do not mention it. Completely omit it.
-  Examples of what to omit:
-    - Shuning sent "ok" and nobody replied after → omit
-    - Shuning shared a file and nobody replied after → omit
-    - Shuning acknowledged a request and nobody followed up → omit
+CRITICAL — Conversation filters (apply IN ORDER before writing output):
+
+  Step 1 — Shuning-replied-last split:
+    For each session/thread, find Shuning's last message (fromSelf=true).
+    If such a message exists AND there are ZERO messages after it in that thread:
+      a) If his last message is a SUBSTANTIVE ASK, REQUEST, ESCALATION, or ASSIGNMENT:
+         → Add to ## ⏳ Waiting for Reply. Do NOT include in P0/P1/P2.
+      b) If his last message is an ACKNOWLEDGEMENT, AGREEMENT, or SIMPLE REPLY
+         ("ok", "noted", "sure", "thanks", "👍", emoji only):
+         → OMIT entirely from all sections.
+
+  Step 2 — Mutually-resolved filter:
+    Also omit a conversation when ALL of these hold:
+      • The last few messages form a clear question → decision → confirmation chain.
+      • Shuning's role was to agree, confirm, or acknowledge (NOT to ask or escalate).
+      • The other party's final message is a closure signal ("ok", "noted", "confirmed",
+        "thanks", "sounds good", "will do", "sure", "👍", or equivalent).
+      • No open question, outstanding deliverable, or new ask remains in the thread.
+    → OMIT entirely. Example: "Move to Monday?" → Shuning: "sure" → Other: "confirmed" → OMIT.
+
+Waiting for Reply rules:
+  • Detect NEW pending items (Step 1a above) and label them [NEW].
+  • Previously-tracked items (provided in context below) that still have no reply in the
+    current messages → keep in this section, label [day N] where N = days since first seen.
+  • Previously-tracked items that NOW have a reply in the messages → RESOLVED: omit from
+    this section (they appear in P0/P1/P2 as normal if still actionable).
+  • Omit this section entirely if nothing is pending.
+
+At the very END of your response, append this machine-readable block (it will be stripped before display):
+<!-- PENDING_ITEMS: [{"source":"[Group/DM: Name]","summary":"What Shuning asked","since":"HH:MM SGT YYYY-MM-DD"}] -->
+Use an empty array if nothing is pending: <!-- PENDING_ITEMS: [] -->
 
 Suppress ONLY these (do not suppress key-domain group messages even if they look routine):
   • Automated bot notifications (CI/CD, monitoring, system alerts)
@@ -176,6 +203,71 @@ def read_messages(hours: int) -> tuple[list[dict], str]:
     return messages, window
 
 
+# ─── Pending-item helpers ─────────────────────────────────────────────────────
+
+def _load_pending_items() -> list[dict]:
+    """Load previously-tracked pending items from Redis. Returns [] on any failure."""
+    try:
+        from upstash_redis import Redis
+
+        r = Redis(
+            url=os.environ["UPSTASH_REDIS_REST_URL"],
+            token=os.environ["UPSTASH_REDIS_REST_TOKEN"],
+        )
+        raw = r.get("seatalk-pending")
+        if not raw:
+            return []
+        data = json.loads(raw) if isinstance(raw, str) else raw
+        return data if isinstance(data, list) else []
+    except Exception:
+        return []
+
+
+def _save_pending_items(items: list[dict]) -> None:
+    """Persist pending items to Redis (TTL: 7 days). Never raises."""
+    try:
+        from upstash_redis import Redis
+
+        r = Redis(
+            url=os.environ["UPSTASH_REDIS_REST_URL"],
+            token=os.environ["UPSTASH_REDIS_REST_TOKEN"],
+        )
+        r.set("seatalk-pending", json.dumps(items, default=str), ex=7 * 24 * 3600)
+    except Exception:
+        pass
+
+
+def _extract_pending_items(summary: str) -> tuple[str, list[dict]]:
+    """
+    Strip the <!-- PENDING_ITEMS: [...] --> marker from Claude's output.
+    Returns (clean_summary, items_list).
+    """
+    pattern = r"<!--\s*PENDING_ITEMS:\s*(\[.*?\])\s*-->"
+    match = re.search(pattern, summary, re.DOTALL)
+    if not match:
+        return summary.strip(), []
+    try:
+        items = json.loads(match.group(1))
+    except (json.JSONDecodeError, ValueError):
+        items = []
+    clean = re.sub(pattern, "", summary, flags=re.DOTALL).strip()
+    return clean, items
+
+
+def _format_pending_context(items: list[dict]) -> str:
+    """Format stored pending items as context block for Claude."""
+    if not items:
+        return ""
+    lines = [
+        "Previously-tracked items still waiting for a reply (check if now resolved in the messages):"
+    ]
+    for item in items:
+        lines.append(
+            f"  - {item.get('source', '')} {item.get('summary', '')} — since {item.get('since', 'unknown')}"
+        )
+    return "\n".join(lines)
+
+
 # ─── Claude summary ───────────────────────────────────────────────────────────
 
 def generate_summary(messages: list[dict], window: str, now_sgt: datetime) -> str:
@@ -188,16 +280,68 @@ def generate_summary(messages: list[dict], window: str, now_sgt: datetime) -> st
         f"MESSAGES ({len(messages)} total):\n"
         f"{json.dumps(messages, indent=2, default=str)}\n"
     )
+
+    # Inject previously-tracked pending items so Claude can resolve or carry them forward
+    pending_ctx = _format_pending_context(_load_pending_items())
+    user_content = f"Summarise these SeaTalk messages:\n\n{payload}"
+    if pending_ctx:
+        user_content += f"\n\n{pending_ctx}"
+
     msg = client.messages.create(
         model="claude-opus-4-6",
         max_tokens=2048,
         system=SYSTEM_PROMPT,
-        messages=[{"role": "user", "content": f"Summarise these SeaTalk messages:\n\n{payload}"}],
+        messages=[{"role": "user", "content": user_content}],
     )
-    return msg.content[0].text
+    raw_output = msg.content[0].text
+
+    # Extract the PENDING_ITEMS marker and persist for next run
+    clean_summary, new_pending = _extract_pending_items(raw_output)
+    _save_pending_items(new_pending)
+    if new_pending:
+        print(f"  Saved {len(new_pending)} pending item(s) to Redis")
+    return clean_summary
 
 
 # ─── Email ────────────────────────────────────────────────────────────────────
+
+_VIP_NAMES = ["jianghong", "hoi", "fengc", "feng c"]
+_FRIEND_NAMES = ["kel jin", "han cheng"]
+
+
+def _apply_seatalk_styles(html: str) -> str:
+    """Post-process rendered HTML to add SeaTalk-specific visual styling."""
+
+    # [Group: Name] → teal pill
+    html = re.sub(
+        r"\[Group:\s*([^\]]+)\]",
+        r'<span class="st-src st-src-group">&#128101; \1</span>',
+        html,
+    )
+
+    # [DM: Name] → purple pill + friend badge where applicable
+    def _dm(m: re.Match) -> str:
+        name = m.group(1).strip()
+        fb = (
+            ' <span class="st-friend">Friend &#128578;</span>'
+            if any(f in name.lower() for f in _FRIEND_NAMES)
+            else ""
+        )
+        return f'<span class="st-src st-src-dm">&#128172; {name}</span>{fb}'
+
+    html = re.sub(r"\[DM:\s*([^\]]+)\]", _dm, html)
+
+    # <strong>Name</strong> → orange if VIP
+    def _bold(m: re.Match) -> str:
+        text = m.group(1)
+        if any(v in text.lower() for v in _VIP_NAMES):
+            return f'<strong class="st-vip">{text}</strong>'
+        return f"<strong>{text}</strong>"
+
+    html = re.sub(r"<strong>([^<]+)</strong>", _bold, html)
+
+    return html
+
 
 def _build_html(summary_md: str, run_label: str, date_str: str) -> str:
     try:
@@ -206,6 +350,8 @@ def _build_html(summary_md: str, run_label: str, date_str: str) -> str:
     except ImportError:
         # Fallback: wrap in <pre> if markdown lib not installed locally
         body_html = f"<pre>{summary_md}</pre>"
+
+    body_html = _apply_seatalk_styles(body_html)
 
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -232,6 +378,18 @@ def _build_html(summary_md: str, run_label: str, date_str: str) -> str:
   ul,ol{{padding-left:1.3rem}}li{{margin:.2rem 0}}
   input[type=checkbox]{{margin-right:4px}}
   code{{background:#f1f3f5;padding:2px 4px;border-radius:3px;font-size:.86em}}
+  /* SeaTalk source pills */
+  .st-src{{display:inline-flex;align-items:center;font-size:.72rem;font-weight:700;
+           border-radius:4px;padding:2px 7px;margin-right:5px;white-space:nowrap;
+           vertical-align:middle}}
+  .st-src-group{{background:#EFF7FC;color:#0080C6;border:1px solid #bae6fd}}
+  .st-src-dm{{background:#f5f3ff;color:#7c3aed;border:1px solid #ddd6fe}}
+  /* VIP name highlight */
+  strong.st-vip{{color:#EE4D2D}}
+  /* Friend badge */
+  .st-friend{{display:inline-block;background:#fef9c3;color:#854d0e;
+              border:1px solid #fde68a;border-radius:4px;font-size:.65rem;
+              font-weight:700;padding:1px 5px;margin-left:3px;vertical-align:middle}}
 </style>
 </head>
 <body>
