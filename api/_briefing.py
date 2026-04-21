@@ -335,7 +335,7 @@ def generate_briefing(
         f"{seatalk_section}"
     )
 
-    models = ["claude-sonnet-4-6", "claude-opus-4-6"]
+    models = ["claude-sonnet-4-6", "claude-haiku-4-5-20251001"]
     last_err = None
     for model in models:
         try:
@@ -347,6 +347,13 @@ def generate_briefing(
             )
             return msg.content[0].text
         except Exception as exc:
+            # Usage-limit errors affect all models on the same key — fail fast.
+            err_str = str(exc)
+            if "API usage limits" in err_str or "reached your specified" in err_str:
+                raise RuntimeError(
+                    f"Anthropic API usage limit reached. {err_str}\n"
+                    "Action: raise your spend/usage limit at console.anthropic.com."
+                ) from exc
             last_err = exc
             continue
     raise last_err
