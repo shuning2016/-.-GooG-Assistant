@@ -27,6 +27,11 @@ from _seatalk import fetch_seatalk_snapshot, format_seatalk_payload
 
 SGT = ZoneInfo("Asia/Singapore")
 RECIPIENT = "Shuning.wang@shopee.com"
+DEDUP_WINDOW_SECONDS = 1800  # 30 minutes
+
+
+class DuplicateRunError(RuntimeError):
+    pass
 GOOGLE_SCOPES = [
     "https://www.googleapis.com/auth/gmail.readonly",
     "https://www.googleapis.com/auth/calendar.readonly",
@@ -362,11 +367,7 @@ def generate_briefing(
 # ─── Storage ──────────────────────────────────────────────────────────────────
 
 def store(date_str: str, briefing: str) -> None:
-    r = Redis(
-        url=os.environ["UPSTASH_REDIS_REST_URL"],
-        token=os.environ["UPSTASH_REDIS_REST_TOKEN"],
-    )
-    r.set(f"daily-brief:{date_str}", briefing, ex=7 * 24 * 3600)
+    _redis().set(f"daily-brief:{date_str}", briefing, ex=7 * 24 * 3600)
 
 
 # ─── Email ────────────────────────────────────────────────────────────────────
@@ -463,13 +464,29 @@ def send_email(briefing_md: str, date_str: str, view_url: str, now_sgt: datetime
 
 # ─── Shared run logic ─────────────────────────────────────────────────────────
 
+def _redis() -> Redis:
+    return Redis(
+        url=os.environ["UPSTASH_REDIS_REST_URL"],
+        token=os.environ["UPSTASH_REDIS_REST_TOKEN"],
+    )
+
+
 def run_briefing() -> tuple[str, str, str]:
     """
     Execute the full briefing pipeline.
     Returns (today_str, view_url, briefing_md).
+    Raises DuplicateRunError if a brief was sent within the last 30 minutes.
     """
     now_sgt = datetime.now(SGT)
     today_str = now_sgt.strftime("%Y-%m-%d")
+
+    r = _redis()
+    acquired = r.set("daily-brief-lock", now_sgt.isoformat(), ex=DEDUP_WINDOW_SECONDS, nx=True)
+    if acquired is None:
+        raise DuplicateRunError(
+            f"Daily brief already sent within the last {DEDUP_WINDOW_SECONDS // 60} minutes — skipping duplicate run."
+        )
+
     since = now_sgt - timedelta(hours=24)
     window = (
         f"{since.strftime('%Y-%m-%d %H:%M SGT')} "

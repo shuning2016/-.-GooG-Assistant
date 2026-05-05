@@ -13,7 +13,7 @@ from http.server import BaseHTTPRequestHandler
 from urllib.parse import parse_qs, urlparse
 
 sys.path.insert(0, os.path.dirname(__file__))
-from _briefing import run_briefing
+from _briefing import run_briefing, DuplicateRunError
 
 
 class handler(BaseHTTPRequestHandler):
@@ -38,6 +38,13 @@ class handler(BaseHTTPRequestHandler):
             self.send_header("Location", view_url)
             self.send_header("Content-Length", "0")
             self.end_headers()
+        except DuplicateRunError as exc:
+            body = f"Skipped: {exc}".encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "text/plain")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
         except Exception as exc:
             import traceback
             traceback.print_exc()  # shows in Vercel function logs

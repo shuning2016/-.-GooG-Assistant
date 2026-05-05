@@ -11,7 +11,7 @@ import sys
 from http.server import BaseHTTPRequestHandler
 
 sys.path.insert(0, os.path.dirname(__file__))
-from _briefing import run_briefing
+from _briefing import run_briefing, DuplicateRunError
 
 
 class handler(BaseHTTPRequestHandler):
@@ -32,6 +32,8 @@ class handler(BaseHTTPRequestHandler):
         try:
             today_str, view_url, briefing = run_briefing()
             self._respond(200, {"status": "ok", "date": today_str, "view_url": view_url})
+        except DuplicateRunError as exc:
+            self._respond(200, {"status": "skipped", "reason": str(exc)})
         except Exception as exc:
             self._respond(500, {"error": str(exc)})
 
