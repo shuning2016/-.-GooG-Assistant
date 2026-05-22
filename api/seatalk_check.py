@@ -48,6 +48,52 @@ _SNAPSHOT_SCRIPT = os.path.join(
     os.path.dirname(__file__), "..", "scripts", "seatalk_snapshot.py"
 )
 
+# ── Summary cache ─────────────────────────────────────────────────────────────
+_SUMMARY_FRESH_S = 3600        # treat cached summary as fresh for 1 hour
+_SUMMARY_CACHE_TTL_S = 2 * 3600  # Redis TTL: keep for 2 hours
+
+
+def _load_summary_cache(date_str: str) -> dict | None:
+    """Return cached summary dict if it was generated less than 1 hour ago, else None."""
+    try:
+        from upstash_redis import Redis
+        r = Redis(
+            url=os.environ["UPSTASH_REDIS_REST_URL"],
+            token=os.environ["UPSTASH_REDIS_REST_TOKEN"],
+        )
+        raw = r.get(f"seatalk-summary:{date_str}")
+        if not raw:
+            return None
+        data = json.loads(raw) if isinstance(raw, str) else raw
+        age_s = datetime.now(SGT).timestamp() - data.get("generated_at_ts", 0)
+        return data if age_s <= _SUMMARY_FRESH_S else None
+    except Exception:
+        return None
+
+
+def _save_summary_cache(
+    date_str: str, summary: str, message_count: int, now_sgt: datetime
+) -> None:
+    """Persist the generated summary to Redis with a 2-hour TTL."""
+    try:
+        from upstash_redis import Redis
+        r = Redis(
+            url=os.environ["UPSTASH_REDIS_REST_URL"],
+            token=os.environ["UPSTASH_REDIS_REST_TOKEN"],
+        )
+        r.set(
+            f"seatalk-summary:{date_str}",
+            json.dumps({
+                "summary": summary,
+                "message_count": message_count,
+                "generated_at": now_sgt.strftime("%H:%M SGT"),
+                "generated_at_ts": now_sgt.timestamp(),
+            }),
+            ex=_SUMMARY_CACHE_TTL_S,
+        )
+    except Exception:
+        pass
+
 
 def _try_run_snapshot(date_str: str) -> list[dict] | None:
     """
@@ -101,17 +147,34 @@ class handler(BaseHTTPRequestHandler):
             self._json(401, {"ok": False, "error": "Unauthorized", "message_count": 0})
             return
 
-        # ── Date param ────────────────────────────────────────────────────────
+        # ── Date + force params ───────────────────────────────────────────────
         parsed = urlparse(self.path)
         params = parse_qs(parsed.query)
         now_sgt = datetime.now(SGT)
         date_str = params.get("date", [now_sgt.strftime("%Y-%m-%d")])[0]
+        force = params.get("force", ["0"])[0] == "1"
 
         try:
             datetime.strptime(date_str, "%Y-%m-%d")
         except ValueError:
             self._json(400, {"ok": False, "error": "Invalid date. Use YYYY-MM-DD.", "message_count": 0})
             return
+
+        # ── Return cached summary if fresh (< 1 hour) and not forced ─────────
+        if not force:
+            cached = _load_summary_cache(date_str)
+            if cached:
+                age_s = int(now_sgt.timestamp() - cached["generated_at_ts"])
+                age_min = age_s // 60
+                self._json(200, {
+                    "ok": True,
+                    "summary": cached["summary"],
+                    "message_count": cached["message_count"],
+                    "generated_at": cached["generated_at"],
+                    "cached": True,
+                    "age_min": age_min,
+                })
+                return
 
         # ── Fetch snapshot from Redis (auto-refresh if missing) ───────────────
         messages = fetch_seatalk_snapshot(date_str)
@@ -130,14 +193,17 @@ class handler(BaseHTTPRequestHandler):
             })
             return
 
-        # ── Generate summary ──────────────────────────────────────────────────
+        # ── Generate summary and cache it ─────────────────────────────────────
         try:
             summary = _generate(messages, date_str, now_sgt)
+            _save_summary_cache(date_str, summary, len(messages), now_sgt)
             self._json(200, {
                 "ok": True,
                 "summary": summary,
                 "message_count": len(messages),
                 "generated_at": now_sgt.strftime("%H:%M SGT"),
+                "cached": False,
+                "age_min": 0,
             })
         except Exception as exc:
             self._json(500, {"ok": False, "error": str(exc), "message_count": len(messages)})

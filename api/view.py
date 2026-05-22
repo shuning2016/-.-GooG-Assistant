@@ -403,37 +403,41 @@ function checkSeatalk() {{
     }}
     return;
   }}
-  if (!_confirmIfRecent('seatalk', 'SeaTalk check')) return;
-  _fetchSeatalk();
+  _fetchSeatalk(false);
 }}
 
-// Explicit refresh from inside the drawer — always re-fetches after confirmation.
+// Explicit refresh — always bypasses the 1-hour cache (force=1).
 function refreshSeatalk() {{
-  if (!_confirmIfRecent('seatalk', 'SeaTalk check')) return;
   _stContentLoaded = false;
   document.querySelector('#stBtn .st-label').innerHTML = '&#128172; SeaTalk';
-  _fetchSeatalk();
+  _fetchSeatalk(true);
 }}
 
-function _fetchSeatalk() {{
+function _fetchSeatalk(force) {{
   var btn = document.getElementById('stBtn');
   btn.disabled = true;
   btn.classList.add('loading');
-  document.getElementById('stBody').innerHTML = '<p style="color:#0080C6;font-size:.85rem">Fetching SeaTalk messages\u2026</p>';
+  var loadingMsg = force
+    ? '<p style="color:#0080C6;font-size:.85rem">Re-fetching SeaTalk messages\u2026</p>'
+    : '<p style="color:#0080C6;font-size:.85rem">Fetching SeaTalk messages\u2026</p>';
+  document.getElementById('stBody').innerHTML = loadingMsg;
   document.getElementById('stMeta').textContent = '';
   document.getElementById('stRefreshBtn').style.display = 'none';
   openDrawer();
 
-  fetch('/api/seatalk_check?date=' + encodeURIComponent(_stDate))
+  var url = '/api/seatalk_check?date=' + encodeURIComponent(_stDate) + (force ? '&force=1' : '');
+  fetch(url)
     .then(function(r) {{ return r.json(); }})
     .then(function(d) {{
       btn.disabled = false;
       btn.classList.remove('loading');
       if (d.ok) {{
         _stContentLoaded = true;
-        _setLastRun('seatalk');
-        document.getElementById('stMeta').textContent =
-          d.message_count + ' messages \u00b7 ' + d.generated_at;
+        var metaParts = [d.message_count + ' messages', d.generated_at];
+        if (d.cached && d.age_min > 0) {{
+          metaParts.push('cached \u00b7 ' + d.age_min + ' min ago');
+        }}
+        document.getElementById('stMeta').textContent = metaParts.join(' \u00b7 ');
         document.getElementById('stBody').innerHTML = stMd(d.summary);
         document.getElementById('stRefreshBtn').style.display = '';
         document.querySelector('#stBtn .st-label').innerHTML = '&#128172; SeaTalk \u2713';
