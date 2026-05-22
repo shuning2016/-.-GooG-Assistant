@@ -28,27 +28,35 @@
   <key>ProgramArguments</key>
   <array>
     <string>/usr/bin/python3</string>
-    <string>/Users/shuning.wang/.goog-assistant/scripts/seatalk_snapshot.py</string>
+    <string>/Users/shuning.wang/Library/CloudStorage/GoogleDrive-shuning2016@gmail.com/My Drive/My Projects/Working Efficiency/GooG Assistant/scripts/seatalk_snapshot.py</string>
     <string>--hours</string>
     <string>24</string>
   </array>
 
-  <!-- Run at 07:50 local time (= 07:50 SGT when Mac is in Asia/Singapore) -->
+  <!-- Run at 07:50 SGT (pre-briefing) and again at 08:05 SGT as a fallback
+       in case Chrome/SeaTalk was not yet open at 07:50.
+       Both runs write to the same Redis key so the later run just refreshes it. -->
   <key>StartCalendarInterval</key>
-  <dict>
-    <key>Hour</key>   <integer>7</integer>
-    <key>Minute</key> <integer>50</integer>
-  </dict>
+  <array>
+    <dict>
+      <key>Hour</key>   <integer>7</integer>
+      <key>Minute</key> <integer>50</integer>
+    </dict>
+    <dict>
+      <key>Hour</key>   <integer>8</integer>
+      <key>Minute</key> <integer>5</integer>
+    </dict>
+  </array>
 
   <key>WorkingDirectory</key>
-  <string>/Users/shuning.wang/.goog-assistant</string>
+  <string>/Users/shuning.wang/Library/CloudStorage/GoogleDrive-shuning2016@gmail.com/My Drive/My Projects/Working Efficiency/GooG Assistant</string>
 
   <key>EnvironmentVariables</key>
   <dict>
     <key>PATH</key>
     <string>/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
     <key>SEATALK_SKILL_ROOT</key>
-    <string>/Users/shuning.wang/.goog-assistant/use-seatalk</string>
+    <string>/Users/shuning.wang/Library/CloudStorage/GoogleDrive-shuning2016@gmail.com/My Drive/My Projects/Working Efficiency/use-seatalk</string>
   </dict>
 
   <key>StandardOutPath</key>
