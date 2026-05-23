@@ -1,8 +1,8 @@
 {
   "version": 1,
   "timezone": "Asia/Singapore",
-  "last_briefing_at": "2026-05-20T08:04:00+08:00",
-  "last_successful_run_at": "2026-05-20T08:04:00+08:00",
-  "last_briefing_file": "briefings/2026-05-20-am.md",
-  "notes": "AM run. Window: 2026-05-18T08:00 SGT → 2026-05-20T08:04 SGT. Work Gmail and Calendar still inaccessible (9th consecutive run). Personal Gmail only. DBS overseas transfer recipient add cooling period expires 09:29 SGT today."
+  "last_briefing_at": "2026-05-23T08:09:00+08:00",
+  "last_successful_run_at": "2026-05-23T08:09:00+08:00",
+  "last_briefing_file": "briefings/2026-05-23-am.md",
+  "notes": "AM run. Window: 2026-05-20T08:04 SGT → 2026-05-23T08:09 SGT. Work Gmail and Calendar still inaccessible (10th consecutive run). Personal Gmail only. Trip.com compensation deadline is TODAY (May 23). Claude API access disabled (credits depleted). Vercel shuningSHP deployment attempts x2."
 }
