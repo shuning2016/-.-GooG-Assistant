@@ -1,8 +1,8 @@
 {
   "version": 1,
   "timezone": "Asia/Singapore",
-  "last_briefing_at": "2026-05-23T08:09:00+08:00",
-  "last_successful_run_at": "2026-05-23T08:09:00+08:00",
-  "last_briefing_file": "briefings/2026-05-23-am.md",
-  "notes": "AM run. Window: 2026-05-20T08:04 SGT → 2026-05-23T08:09 SGT. Work Gmail and Calendar still inaccessible (10th consecutive run). Personal Gmail only. Trip.com compensation deadline is TODAY (May 23). Claude API access disabled (credits depleted). Vercel shuningSHP deployment attempts x2."
+  "last_briefing_at": "2026-05-24T08:05:00+08:00",
+  "last_successful_run_at": "2026-05-24T08:05:00+08:00",
+  "last_briefing_file": "briefings/2026-05-24-am.md",
+  "notes": "AM run. Window: 2026-05-23T08:09 SGT → 2026-05-24T08:05 SGT. Work Gmail and Calendar still inaccessible (11th consecutive run). Personal Gmail only. Trip.com SGD 496.27 refund confirmed 23 May — P0 case closed. DBS PayNow nickname deadline June 6. Claude API credits still depleted. fuofuo.com domain registered."
 }
