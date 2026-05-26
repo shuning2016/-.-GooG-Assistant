@@ -27,7 +27,7 @@ from urllib.parse import parse_qs, urlparse
 sys.path.insert(0, os.path.dirname(__file__))
 from _session import ALLOWED_EMAILS, COOKIE_MAX_AGE, COOKIE_NAME, make_cookie
 
-REDIRECT_URI = "https://goo-g-assistant.vercel.app/api/auth"
+REDIRECT_URI = "https://googassistant.fuofuo.com/api/auth"
 
 
 def _google_auth_url(state: str) -> str:
