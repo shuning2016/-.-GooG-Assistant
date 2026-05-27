@@ -992,7 +992,7 @@ function _renderPrereads(items) {{
       + '<input type="text" id="pr-add-' + sid + '" class="pr-add-input"'
       +   ' data-pdf="' + escHtml(pdfName) + '"'
       +   ' placeholder="Add a question for this deck&#8230;"'
-      +   ' onkeydown="if(event.key===\'Enter\'){{event.preventDefault();addQuestion(this.nextElementSibling);}}">'
+      +   ' onkeydown="if(event.keyCode===13){{event.preventDefault();addQuestion(this.nextElementSibling);}}">'
       + '<button class="add-btn" onclick="addQuestion(this)">&#65291; Add</button>'
       + '</div>';
     html += '</div>'; // end questions view
