@@ -4,7 +4,8 @@
     "api/trigger.py":        { "maxDuration": 300 },
     "api/view.py":           { "maxDuration": 30 },
     "api/auth.py":           { "maxDuration": 30 },
-    "api/seatalk_check.py":  { "maxDuration": 60 }
+    "api/seatalk_check.py":  { "maxDuration": 60 },
+    "api/action_items.py":   { "maxDuration": 30 }
   },
   "rewrites": [
     { "source": "/", "destination": "/api/view" }

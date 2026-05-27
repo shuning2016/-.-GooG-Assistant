@@ -117,6 +117,14 @@ def _render_html(briefing_md: str, date_str: str) -> str:
   }}
   .st-btn:hover{{opacity:.85}}
   .st-btn:disabled{{opacity:.45;cursor:default}}
+  /* Action items button */
+  .ai-btn{{
+    background:var(--navy);color:#fff;border:none;border-radius:6px;
+    padding:7px 14px;font-size:.82rem;font-weight:600;cursor:pointer;
+    white-space:nowrap;transition:opacity .15s;letter-spacing:.2px;
+  }}
+  .ai-btn:hover{{opacity:.85}}
+  .ai-btn.has-urgent{{background:var(--red)}}
   .st-spinner{{
     width:13px;height:13px;border:2px solid rgba(255,255,255,.35);
     border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;
@@ -125,6 +133,46 @@ def _render_html(briefing_md: str, date_str: str) -> str:
   .st-btn.loading .st-spinner{{display:inline-block}}
   .st-btn.loading .st-label{{opacity:.6}}
   @keyframes spin{{to{{transform:rotate(360deg)}}}}
+
+  /* ── Action items drawer ── */
+  .ai-drawer{{
+    position:sticky;top:var(--header-h);z-index:189;
+    max-height:0;overflow:hidden;
+    transition:max-height .35s ease,box-shadow .35s ease;
+    background:#f0f4ff;border-bottom:2px solid var(--navy);
+    box-shadow:none;
+  }}
+  .ai-drawer.open{{
+    max-height:600px;
+    box-shadow:0 4px 16px rgba(23,43,77,.15);
+    overflow-y:auto;
+  }}
+  .ai-inner{{max-width:940px;margin:0 auto;padding:18px 24px 20px}}
+  .ai-meta{{
+    display:flex;align-items:center;gap:12px;margin-bottom:12px;
+    font-size:.8rem;color:var(--navy);font-weight:600;
+  }}
+  .ai-close{{
+    margin-left:auto;background:none;border:none;font-size:1.1rem;
+    cursor:pointer;color:var(--navy);opacity:.7;line-height:1;padding:2px 6px;
+  }}
+  .ai-close:hover{{opacity:1}}
+  .ai-table{{width:100%;border-collapse:collapse;font-size:.85rem}}
+  .ai-table th{{
+    background:#e8edf7;padding:7px 10px;border:1px solid #c7d0e8;
+    text-align:left;color:var(--navy);font-weight:600;
+  }}
+  .ai-table td{{padding:7px 10px;border:1px solid #d8dff0;vertical-align:top}}
+  .ai-table tr:nth-child(even) td{{background:#f5f7fc}}
+  .ai-done-btn{{
+    background:none;border:1px solid #9ca3af;color:#6b7280;
+    border-radius:4px;padding:2px 9px;font-size:.75rem;cursor:pointer;
+    transition:all .15s;white-space:nowrap;
+  }}
+  .ai-done-btn:hover{{background:var(--green);color:#fff;border-color:var(--green)}}
+  .ai-done-btn:disabled{{opacity:.4;cursor:default}}
+  .ai-row-done td{{opacity:.4;text-decoration:line-through}}
+  .ai-empty{{color:#6b7280;font-size:.88rem;padding:10px 0}}
 
   /* ── SeaTalk drawer ── */
   .st-drawer{{
@@ -332,12 +380,25 @@ def _render_html(briefing_md: str, date_str: str) -> str:
   <span class="navbar-title">&#9889; Daily Brief</span>
   <span class="navbar-date">{date_str}</span>
   <span class="navbar-tz">Asia/Singapore</span>
+  <button class="ai-btn" id="aiBtn" onclick="toggleActionItems()">&#9989; Actions</button>
   <button class="st-btn" id="stBtn" onclick="checkSeatalk()">
     <span class="st-spinner" id="stSpinner"></span>
     <span class="st-label">&#128172; SeaTalk</span>
   </button>
   {run_btn}
 </nav>
+
+<!-- Action items drawer -->
+<div class="ai-drawer" id="aiDrawer">
+  <div class="ai-inner">
+    <div class="ai-meta">
+      <span>&#9989; Open Action Items</span>
+      <span id="aiMeta"></span>
+      <button class="ai-close" onclick="closeAiDrawer()" title="Close">&times;</button>
+    </div>
+    <div id="aiBody"><p class="ai-empty">Loading…</p></div>
+  </div>
+</div>
 
 <!-- SeaTalk result drawer (hidden until button is clicked) -->
 <div class="st-drawer" id="stDrawer">
@@ -366,7 +427,146 @@ def _render_html(briefing_md: str, date_str: str) -> str:
 <button class="btt" onclick="window.scrollTo({{top:0,behavior:'smooth'}})" title="Back to top">\u2191</button>
 
 <script>
-// ── SeaTalk check ────────────────────────────────────────────────────────────
+// ── Action Items ─────────────────────────────────────────────────────────────
+var _aiLoaded = false;
+var _aiOpen = false;
+var COLOR = {{'🔴':'#dc2626','🟠':'#ea580c','🟡':'#d97706','🟢':'#16a34a','⚪':'#9ca3af'}};
+var LABEL = {{'🔴':'Chase now','🟠':'Chase soon','🟡':'Watch','🟢':'Can wait','⚪':'When possible'}};
+
+function _aiColor(item) {{
+  var urgency = item.urgency || null;
+  var eta = item.eta || null;
+  var today = new Date().toISOString().slice(0,10);
+  if (!eta && urgency === 'high') return '🔴';
+  if (eta && eta <= today) return '🔴';
+  if (eta) {{
+    var days = Math.round((new Date(eta) - new Date(today)) / 86400000);
+    if (days <= 3) return '🟠';
+    if (days <= 7) return '🟡';
+    return '🟢';
+  }}
+  return '⚪';
+}}
+
+function toggleActionItems() {{
+  var drawer = document.getElementById('aiDrawer');
+  if (_aiOpen) {{
+    closeAiDrawer(); return;
+  }}
+  _aiOpen = true;
+  drawer.classList.add('open');
+  if (!_aiLoaded) _fetchActionItems();
+}}
+
+function closeAiDrawer() {{
+  _aiOpen = false;
+  document.getElementById('aiDrawer').classList.remove('open');
+}}
+
+function _fetchActionItems() {{
+  fetch('/api/action_items')
+    .then(function(r) {{ return r.json(); }})
+    .then(function(items) {{
+      _aiLoaded = true;
+      _renderActionItems(items);
+    }})
+    .catch(function(err) {{
+      document.getElementById('aiBody').innerHTML =
+        '<p style="color:#9f1239">Failed to load: ' + String(err) + '</p>';
+    }});
+}}
+
+function _renderActionItems(items) {{
+  var open = items.filter(function(i) {{ return !i.done; }});
+  var meta = document.getElementById('aiMeta');
+  meta.textContent = open.length + ' open';
+
+  // Highlight button red if urgent items exist
+  var hasUrgent = open.some(function(i) {{ return _aiColor(i) === '🔴'; }});
+  if (hasUrgent) document.getElementById('aiBtn').classList.add('has-urgent');
+
+  if (open.length === 0) {{
+    document.getElementById('aiBody').innerHTML = '<p class="ai-empty">No open action items 🎉</p>';
+    return;
+  }}
+
+  // Sort: 🔴 → 🟠 → 🟡 → 🟢 → ⚪, then by ETA
+  var order = ['🔴','🟠','🟡','🟢','⚪'];
+  open.sort(function(a,b) {{
+    var ca = _aiColor(a), cb = _aiColor(b);
+    var oi = order.indexOf(ca) - order.indexOf(cb);
+    if (oi !== 0) return oi;
+    var ea = a.eta || 'z', eb = b.eta || 'z';
+    return ea < eb ? -1 : ea > eb ? 1 : 0;
+  }});
+
+  var today = new Date().toISOString().slice(0,10);
+  var html = '<table class="ai-table"><thead><tr>'
+    + '<th></th><th>Action</th><th>Source</th><th>ETA</th><th>Chase?</th><th></th>'
+    + '</tr></thead><tbody>';
+
+  open.forEach(function(item) {{
+    var c = _aiColor(item);
+    var etaDisp = '—';
+    if (item.eta) {{
+      var days = Math.round((new Date(item.eta) - new Date(today)) / 86400000);
+      if (days < 0) etaDisp = '<span style="color:var(--red)">overdue</span>';
+      else if (days === 0) etaDisp = '<span style="color:var(--red)">today</span>';
+      else etaDisp = item.eta.slice(5) + ' (' + days + 'd)';
+    }}
+    var srcLabel = (item.source_type === 'seatalk' ? 'SeaTalk: ' : 'Email: ') + escHtml(item.source || '');
+    html += '<tr id="ai-row-' + escHtml(item.id) + '">'
+      + '<td><span title="' + LABEL[c] + '">' + c + '</span></td>'
+      + '<td>' + escHtml(item.action || '') + '</td>'
+      + '<td style="font-size:.8rem;color:#6b7280">' + srcLabel + '</td>'
+      + '<td style="white-space:nowrap">' + etaDisp + '</td>'
+      + '<td style="white-space:nowrap;color:' + (COLOR[c]||'#6b7280') + ';font-weight:600">' + LABEL[c] + '</td>'
+      + '<td><button class="ai-done-btn" onclick="markDone(\'' + escHtml(item.id) + '\',this)">✓ Done</button></td>'
+      + '</tr>';
+  }});
+  html += '</tbody></table>';
+  document.getElementById('aiBody').innerHTML = html;
+}}
+
+function markDone(id, btn) {{
+  btn.disabled = true;
+  btn.textContent = '…';
+  fetch('/api/action_items?id=' + encodeURIComponent(id), {{method:'POST'}})
+    .then(function(r) {{ return r.json(); }})
+    .then(function(d) {{
+      if (d.ok) {{
+        var row = document.getElementById('ai-row-' + id);
+        if (row) {{
+          row.classList.add('ai-row-done');
+          btn.textContent = '✓';
+          setTimeout(function() {{
+            row.style.transition = 'opacity .4s';
+            row.style.opacity = '0';
+            setTimeout(function() {{ row.remove(); }}, 400);
+          }}, 600);
+          // Update count
+          var meta = document.getElementById('aiMeta');
+          var n = parseInt(meta.textContent) - 1;
+          meta.textContent = n + ' open';
+          if (n === 0) {{
+            document.getElementById('aiBtn').classList.remove('has-urgent');
+            document.getElementById('aiBody').innerHTML = '<p class="ai-empty">No open action items 🎉</p>';
+          }}
+        }}
+      }} else {{
+        btn.disabled = false;
+        btn.textContent = '✓ Done';
+        alert('Error: ' + (d.error || 'unknown'));
+      }}
+    }})
+    .catch(function(err) {{
+      btn.disabled = false;
+      btn.textContent = '✓ Done';
+      alert('Request failed: ' + String(err));
+    }});
+}}
+
+// ── SeaTalk check ─────────────────────────────────────────────────────────────
 var _stDate = {json.dumps(date_str)};
 var _stContentLoaded = false;
 
