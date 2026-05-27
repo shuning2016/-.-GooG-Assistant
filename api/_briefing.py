@@ -26,6 +26,7 @@ from upstash_redis import Redis
 
 sys.path.insert(0, os.path.dirname(__file__))
 from _seatalk import fetch_seatalk_snapshot, format_seatalk_payload
+from _pdf_reader import generate_pdf_qa, save_pdf_qa, select_best_pdf
 
 SGT = ZoneInfo("Asia/Singapore")
 RECIPIENT = "Shuning.wang@shopee.com"
@@ -172,6 +173,33 @@ def _extract_images(
     return results
 
 
+def _extract_pdf_attachments(payload: dict) -> list[dict]:
+    """Return metadata for PDF attachments found in a Gmail message payload.
+
+    Returns a list of dicts: {filename, attachment_id, size}.
+    Does NOT download the attachment bytes — use the attachment_id later.
+    """
+    results: list[dict] = []
+
+    def _walk(parts: list) -> None:
+        for part in parts:
+            mime = part.get("mimeType", "")
+            if mime == "application/pdf":
+                att_id = part.get("body", {}).get("attachmentId")
+                if att_id:
+                    results.append({
+                        "filename": part.get("filename", "attachment.pdf"),
+                        "attachment_id": att_id,
+                        "size": part.get("body", {}).get("size", 0),
+                    })
+            sub = part.get("parts", [])
+            if sub:
+                _walk(sub)
+
+    _walk(payload.get("parts", []))
+    return results
+
+
 def fetch_gmail(service, since: datetime) -> list[dict]:
     """Return up to 40 message summaries since `since`.
 
@@ -200,8 +228,9 @@ def fetch_gmail(service, since: datetime) -> list[dict]:
         is_prereread = _is_prereread(subject)
         body_text = ""
         images: list[dict] = []
-        if _is_key_domain(subject, snippet):
-            # Second pass: full body + image attachments for key-domain emails
+        pdf_attachments: list[dict] = []
+        if _is_key_domain(subject, snippet) or is_prereread:
+            # Second pass: full body + image/PDF attachments for key-domain and pre-read emails
             try:
                 full = service.users().messages().get(
                     userId="me",
@@ -211,6 +240,9 @@ def fetch_gmail(service, since: datetime) -> list[dict]:
                 full_payload = full.get("payload", {})
                 body_text = _extract_plain_body(full_payload)
                 images = _extract_images(full_payload, service, m["id"])
+                if is_prereread:
+                    # Extract PDF metadata for pre-read emails (for the Q&A tab)
+                    pdf_attachments = _extract_pdf_attachments(full_payload)
             except Exception:
                 pass  # Fall back to snippet if full fetch fails
 
@@ -227,6 +259,7 @@ def fetch_gmail(service, since: datetime) -> list[dict]:
                 "is_prereread": is_prereread,
                 "body": body_text,
                 "images": images,  # image attachments for Claude Vision (key-domain only)
+                "pdf_attachments": pdf_attachments,  # PDF metadata for pre-read Q&A
             }
         )
     return out
@@ -592,8 +625,8 @@ def generate_briefing(
                     **img,
                 }
             )
-        # Strip images (and raw data) from the serialised email object
-        emails_text.append({k: v for k, v in email.items() if k != "images"})
+        # Strip images and pdf_attachments (binary/metadata) from the serialised email object
+        emails_text.append({k: v for k, v in email.items() if k not in ("images", "pdf_attachments")})
 
     # Cap total images to avoid oversized requests
     all_images = all_images[:5]
@@ -777,6 +810,63 @@ def _redis() -> Redis:
     )
 
 
+def _run_pdf_qa(gmail_svc, emails: list[dict], today_str: str, r) -> None:
+    """
+    For each pre-read email with PDF attachments, download the best PDF and
+    generate Ian Ho–style predicted questions using Claude. Results are stored
+    in Redis under pdf-qa:{today_str}.
+
+    Errors are silently swallowed so they don't block the main briefing.
+    """
+    try:
+        client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+    except Exception:
+        return
+
+    # Collect pre-read emails that have PDF attachments
+    prereads_with_pdfs = [
+        e for e in emails
+        if e.get("is_prereread") and e.get("pdf_attachments")
+    ]
+
+    processed_pdfs: set[str] = set()  # avoid duplicates across emails
+
+    for email in prereads_with_pdfs:
+        best = select_best_pdf(email["pdf_attachments"])
+        if not best:
+            continue
+        pdf_name = best["filename"]
+        att_id = best["attachment_id"]
+        msg_id = email["id"]
+
+        # Skip if we already processed a PDF with this name today
+        if pdf_name in processed_pdfs:
+            continue
+        processed_pdfs.add(pdf_name)
+
+        try:
+            # Download the PDF bytes from Gmail
+            att_resp = (
+                gmail_svc.users()
+                .messages()
+                .attachments()
+                .get(userId="me", messageId=msg_id, id=att_id)
+                .execute()
+            )
+            raw_data = att_resp.get("data", "")
+            pdf_bytes = base64.urlsafe_b64decode(raw_data + "==")
+            if len(pdf_bytes) < 1000:
+                continue  # Skip suspiciously small "PDFs"
+
+            # Generate questions
+            questions = generate_pdf_qa(pdf_bytes, pdf_name, today_str, client)
+            if questions:
+                save_pdf_qa(r, today_str, questions)
+        except Exception:
+            # Non-fatal: continue with next email
+            continue
+
+
 def run_briefing() -> tuple[str, str, str]:
     """
     Execute the full briefing pipeline.
@@ -807,6 +897,11 @@ def run_briefing() -> tuple[str, str, str]:
     events = fetch_calendar(cal_svc, now_sgt)
     seatalk_msgs = fetch_seatalk_snapshot(today_str)  # None if snapshot not pushed
     action_items = fetch_open_action_items(r)
+
+    # ── PDF Q&A generation for pre-read emails ──────────────────────────────
+    # For each pre-read email with PDF attachments, select the main discussion
+    # deck, download it, and generate Ian Ho–style predicted questions.
+    _run_pdf_qa(gmail_svc, emails, today_str, r)
 
     briefing_raw = generate_briefing(emails, events, today_str, window, seatalk_msgs, action_items)
     # Parse any new action items Claude found (from images or email text), save to Redis,

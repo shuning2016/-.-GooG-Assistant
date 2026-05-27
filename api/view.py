@@ -289,6 +289,38 @@ def _render_html(briefing_md: str, date_str: str) -> str:
   .delta-header{{color:var(--primary)!important;border-bottom-color:var(--primary)!important}}
   .delta-body{{background:#fff0ec;border-radius:8px;padding:10px 14px;margin:.4rem 0}}
 
+  /* ── Pre-reads tab ── */
+  .pr-pdf-block{{margin-bottom:28px}}
+  .pr-pdf-title{{font-size:.95rem;font-weight:700;color:var(--navy);margin-bottom:12px;display:flex;align-items:center;gap:8px;padding-bottom:8px;border-bottom:2px solid var(--border)}}
+  .pr-pdf-icon{{font-size:1.1rem}}
+  .pr-q-row{{display:flex;align-items:flex-start;gap:8px;padding:9px 0;border-bottom:1px solid #f0f1f5}}
+  .pr-q-row:last-of-type{{border-bottom:none}}
+  .pr-slide-ref{{font-size:.73rem;font-weight:700;color:var(--teal);background:#f0f9ff;border:1px solid #bae6fd;border-radius:4px;padding:2px 7px;white-space:nowrap;flex-shrink:0;align-self:flex-start;margin-top:2px}}
+  .pr-slide-ref.pr-others{{color:#7c3aed;background:#f5f3ff;border-color:#ddd6fe}}
+  .pr-slide-ref.pr-summary{{color:var(--muted);background:#f3f4f6;border-color:var(--border)}}
+  .pr-q-text{{flex:1;font-size:.9rem;color:var(--text);line-height:1.55}}
+  .pr-q-text.pr-is-summary{{font-style:italic;color:var(--muted);font-size:.82rem}}
+  .pr-actions{{display:flex;gap:4px;flex-shrink:0}}
+  .pr-edit-btn,.pr-del-btn{{background:none;border:1px solid var(--border);border-radius:4px;padding:3px 9px;font-size:.75rem;cursor:pointer;color:var(--muted);font-family:inherit;transition:all .15s}}
+  .pr-edit-btn:hover{{border-color:var(--teal);color:var(--teal);background:#f0f9ff}}
+  .pr-del-btn:hover{{border-color:var(--red);color:var(--red);background:#fff1f2}}
+  .pr-add-row{{display:flex;gap:8px;padding-top:12px;margin-top:8px;border-top:1px dashed var(--border);flex-wrap:wrap}}
+  .pr-add-input{{flex:1;min-width:200px;border:1px solid #c7d0e8;border-radius:6px;padding:7px 10px;font-size:.88rem;font-family:inherit}}
+  .pr-add-input:focus{{outline:2px solid var(--teal);border-color:var(--teal)}}
+
+  /* ── Reason modal ── */
+  .modal-overlay{{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:500;display:flex;align-items:center;justify-content:center;padding:20px}}
+  .modal-box{{background:#fff;border-radius:14px;padding:28px 32px;max-width:480px;width:100%;box-shadow:0 8px 40px rgba(0,0,0,.2)}}
+  .modal-title{{font-size:1rem;font-weight:700;color:var(--navy);margin-bottom:16px}}
+  .modal-reasons{{display:flex;flex-direction:column;gap:10px;margin-bottom:14px}}
+  .modal-reasons label{{display:flex;align-items:center;gap:8px;font-size:.9rem;cursor:pointer;padding:6px 10px;border-radius:6px;transition:background .12s}}
+  .modal-reasons label:hover{{background:#f3f4f6}}
+  .modal-reasons input[type=radio]{{accent-color:var(--primary);width:15px;height:15px;flex-shrink:0}}
+  .modal-textarea{{width:100%;border:1px solid var(--border);border-radius:6px;padding:8px 10px;font-family:inherit;font-size:.88rem;resize:vertical;margin-top:4px;color:var(--text)}}
+  .modal-textarea:focus{{outline:2px solid var(--teal);border-color:var(--teal)}}
+  .modal-label{{font-size:.82rem;color:var(--muted);margin-top:12px;margin-bottom:2px;display:block}}
+  .modal-footer{{display:flex;gap:10px;justify-content:flex-end;margin-top:20px}}
+
   /* ── Back to top ── */
   .btt{{position:fixed;bottom:26px;right:26px;background:var(--primary);color:#fff;border:none;border-radius:50%;width:40px;height:40px;cursor:pointer;font-size:1.1rem;box-shadow:0 2px 8px rgba(0,0,0,.2);display:flex;align-items:center;justify-content:center;opacity:.75;transition:opacity .15s;z-index:100}}
   .btt:hover{{opacity:1}}
@@ -325,7 +357,33 @@ def _render_html(briefing_md: str, date_str: str) -> str:
   <button class="tab-btn" data-tab="seatalk" onclick="switchTab('seatalk')">
     &#128172; SeaTalk
   </button>
+  <button class="tab-btn" data-tab="prereads" onclick="switchTab('prereads')">
+    &#128214; Pre-reads
+    <span id="prBadge" class="tab-badge" style="display:none"></span>
+  </button>
 </nav>
+
+<!-- ── Reason modal (shared by Pre-reads edit/delete) ── -->
+<div id="reasonModal" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeReasonModal()">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <div class="modal-title" id="reasonModalTitle">Why?</div>
+    <div class="modal-reasons">
+      <label><input type="radio" name="reason" value="not_relevant"> Not relevant to this meeting</label>
+      <label><input type="radio" name="reason" value="answered_before"> Already answered in a previous meeting</label>
+      <label><input type="radio" name="reason" value="too_trivial"> Too trivial to ask</label>
+      <label><input type="radio" name="reason" value="other" checked> Other</label>
+    </div>
+    <div id="editQuestionWrap" style="display:none">
+      <span class="modal-label">Edited question:</span>
+      <textarea id="editQuestionText" class="modal-textarea" rows="3" placeholder="Enter updated question"></textarea>
+    </div>
+    <textarea id="reasonDetail" class="modal-textarea" rows="2" placeholder="Additional context (optional)"></textarea>
+    <div class="modal-footer">
+      <button class="cancel-btn" onclick="closeReasonModal()">Cancel</button>
+      <button class="add-btn" id="reasonConfirmBtn" onclick="confirmReason()">Confirm</button>
+    </div>
+  </div>
+</div>
 
 <!-- ── Tab: Briefing ── -->
 <div id="tab-briefing" class="tab-panel">
@@ -390,6 +448,25 @@ def _render_html(briefing_md: str, date_str: str) -> str:
   </div>
 </div>
 
+<!-- ── Tab: Pre-reads ── -->
+<div id="tab-prereads" class="tab-panel" hidden>
+  <div class="side-panel">
+    <div class="panel-card">
+      <div class="panel-header">
+        <span class="panel-title">&#128214; Pre-read Q&amp;A</span>
+        <span id="prTimestamp" class="meta-time"></span>
+        <button class="refresh-btn" id="prRefreshBtn" onclick="_fetchPrereads()">&#8635; Refresh</button>
+      </div>
+      <p style="font-size:.82rem;color:var(--muted);margin-bottom:18px;line-height:1.55">
+        Predicted questions Ian Ho would ask based on today&#39;s pre-read PDF decks.
+        Generated automatically during the daily brief.
+        You can <strong>edit</strong>, <strong>delete</strong>, or <strong>add</strong> questions — all changes are logged for prompt improvement.
+      </p>
+      <div id="prContent"><p class="loading-msg">Loading&#8230;</p></div>
+    </div>
+  </div>
+</div>
+
 <button class="btt" onclick="window.scrollTo({{top:0,behavior:'smooth'}})" title="Back to top">↑</button>
 
 <script>
@@ -436,7 +513,7 @@ function _confirmIfRecent(type, label) {{
 }}
 
 // ── Tab system ─────────────────────────────────────────────────────────────────
-var _tabLoaded = {{briefing: true, actions: false, seatalk: false}};
+var _tabLoaded = {{briefing: true, actions: false, seatalk: false, prereads: false}};
 
 function switchTab(name) {{
   document.querySelectorAll('.tab-btn').forEach(function(b) {{
@@ -451,6 +528,7 @@ function switchTab(name) {{
     _tabLoaded[name] = true;
     if (name === 'actions') _fetchActionItems();
     if (name === 'seatalk') _fetchSeatalk(false);
+    if (name === 'prereads') _fetchPrereads();
   }}
 }}
 
@@ -741,6 +819,220 @@ function tagPriorities(root) {{
   }});
 }}
 
+// ── Pre-reads ─────────────────────────────────────────────────────────────────
+var _prFetching = false;
+var _reasonAction = null;
+
+function _fetchPrereads() {{
+  if (_prFetching) return;
+  _prFetching = true;
+  var btn = document.getElementById('prRefreshBtn');
+  if (btn) {{ btn.disabled = true; btn.textContent = 'Loading…'; }}
+  fetch('/api/pdf_qa?date=' + encodeURIComponent(_PAGE_DATE))
+    .then(function(r) {{ return r.json(); }})
+    .then(function(d) {{
+      _prFetching = false;
+      if (btn) {{ btn.disabled = false; btn.innerHTML = '&#8635; Refresh'; }}
+      document.getElementById('prTimestamp').textContent = 'Updated ' + _sgtNow();
+      _renderPrereads(d.items || []);
+    }})
+    .catch(function(err) {{
+      _prFetching = false;
+      if (btn) {{ btn.disabled = false; btn.innerHTML = '&#8635; Refresh'; }}
+      document.getElementById('prContent').innerHTML =
+        '<div class="st-error">Failed to load: ' + escHtml(String(err)) + '</div>';
+    }});
+}}
+
+function _renderPrereads(items) {{
+  // Count non-summary questions for badge
+  var qCount = items.filter(function(i) {{ return i.slide_ref !== 'Summary'; }}).length;
+  var badge = document.getElementById('prBadge');
+  if (qCount > 0) {{ badge.textContent = String(qCount); badge.style.display = ''; }}
+  else {{ badge.style.display = 'none'; }}
+
+  if (!items || items.length === 0) {{
+    document.getElementById('prContent').innerHTML =
+      '<p class="ai-empty">No pre-read Q&amp;A for ' + escHtml(_PAGE_DATE) + '.<br>'
+      + '<span style="font-size:.82rem;color:var(--muted)">Q&amp;A is generated automatically during the daily brief when pre-read emails have PDF attachments.</span></p>';
+    return;
+  }}
+
+  // Group by pdf_name, preserving insertion order
+  var groups = {{}};
+  var order = [];
+  items.forEach(function(item) {{
+    var name = item.pdf_name || 'Unknown PDF';
+    if (!groups[name]) {{ groups[name] = []; order.push(name); }}
+    groups[name].push(item);
+  }});
+
+  var html = '';
+  order.forEach(function(pdfName) {{
+    var qs = groups[pdfName];
+    var safePdfId = pdfName.replace(/[^a-zA-Z0-9]/g, '-').slice(0, 40);
+    html += '<div class="pr-pdf-block">'
+      + '<div class="pr-pdf-title"><span class="pr-pdf-icon">&#128196;</span>' + escHtml(pdfName) + '</div>';
+
+    qs.forEach(function(item) {{
+      var isSummary = (item.slide_ref === 'Summary');
+      var isOthers = (item.slide_ref === 'Others');
+      var refClass = isSummary ? 'pr-slide-ref pr-summary' : (isOthers ? 'pr-slide-ref pr-others' : 'pr-slide-ref');
+      var qClass = isSummary ? 'pr-q-text pr-is-summary' : 'pr-q-text';
+      html += '<div class="pr-q-row" id="pr-row-' + escHtml(item.id) + '">'
+        + '<span class="' + refClass + '">' + escHtml(item.slide_ref || 'General') + '</span>'
+        + '<span class="' + qClass + '">' + escHtml(item.question || '') + '</span>'
+        + '<div class="pr-actions">'
+        + '<button class="pr-edit-btn"'
+        +   ' data-id="' + escHtml(item.id) + '"'
+        +   ' data-pdf="' + escHtml(pdfName) + '"'
+        +   ' data-q="' + escHtml(item.question || '') + '"'
+        +   ' onclick="openEditModal(this)">&#9998; Edit</button>'
+        + '<button class="pr-del-btn"'
+        +   ' data-id="' + escHtml(item.id) + '"'
+        +   ' data-pdf="' + escHtml(pdfName) + '"'
+        +   ' onclick="openDeleteModal(this)">&#10005; Delete</button>'
+        + '</div>'
+        + '</div>';
+    }});
+
+    // Add question row
+    html += '<div class="pr-add-row">'
+      + '<input type="text" id="pr-add-' + safePdfId + '"'
+      +   ' class="pr-add-input" data-pdf="' + escHtml(pdfName) + '"'
+      +   ' placeholder="Add a question for this deck…"'
+      +   ' onkeydown="if(event.key===\'Enter\'){{event.preventDefault();addQuestion(this.nextElementSibling);}}">'
+      + '<button class="add-btn" onclick="addQuestion(this)">&#65291; Add</button>'
+      + '</div>'
+      + '</div>';
+  }});
+
+  document.getElementById('prContent').innerHTML = html;
+}}
+
+// ── Reason modal ───────────────────────────────────────────────────────────────
+function openDeleteModal(btn) {{
+  _reasonAction = {{type:'delete', id:btn.dataset.id, pdf:btn.dataset.pdf, date:_PAGE_DATE}};
+  document.getElementById('reasonModalTitle').textContent = 'Why are you deleting this question?';
+  document.getElementById('editQuestionWrap').style.display = 'none';
+  document.getElementById('editQuestionText').value = '';
+  document.getElementById('reasonDetail').value = '';
+  document.querySelectorAll('input[name=reason]').forEach(function(r) {{ r.checked = r.value==='other'; }});
+  document.getElementById('reasonModal').style.display = 'flex';
+  setTimeout(function() {{ document.getElementById('reasonDetail').focus(); }}, 80);
+}}
+
+function openEditModal(btn) {{
+  _reasonAction = {{type:'edit', id:btn.dataset.id, pdf:btn.dataset.pdf, date:_PAGE_DATE}};
+  document.getElementById('reasonModalTitle').textContent = 'Why are you editing this question?';
+  document.getElementById('editQuestionWrap').style.display = 'block';
+  document.getElementById('editQuestionText').value = btn.dataset.q || '';
+  document.getElementById('reasonDetail').value = '';
+  document.querySelectorAll('input[name=reason]').forEach(function(r) {{ r.checked = r.value==='other'; }});
+  document.getElementById('reasonModal').style.display = 'flex';
+  setTimeout(function() {{ document.getElementById('editQuestionText').focus(); }}, 80);
+}}
+
+function closeReasonModal() {{
+  document.getElementById('reasonModal').style.display = 'none';
+  _reasonAction = null;
+}}
+
+function confirmReason() {{
+  if (!_reasonAction) return;
+  var reason = (document.querySelector('input[name=reason]:checked') || {{}}).value || 'other';
+  var detail = (document.getElementById('reasonDetail').value || '').trim();
+  var action = _reasonAction;
+  var confirmBtn = document.getElementById('reasonConfirmBtn');
+  confirmBtn.disabled = true;
+  confirmBtn.textContent = 'Saving…';
+
+  function _done(ok, errMsg) {{
+    confirmBtn.disabled = false;
+    confirmBtn.textContent = 'Confirm';
+    closeReasonModal();
+    if (!ok) alert('Error: ' + (errMsg || 'unknown'));
+  }}
+
+  if (action.type === 'delete') {{
+    fetch('/api/pdf_qa?id=' + encodeURIComponent(action.id), {{
+      method: 'DELETE',
+      headers: {{'Content-Type': 'application/json'}},
+      body: JSON.stringify({{reason: reason, reason_detail: detail, date: action.date}})
+    }})
+    .then(function(r) {{ return r.json(); }})
+    .then(function(d) {{
+      if (d.ok) {{
+        var row = document.getElementById('pr-row-' + action.id);
+        if (row) {{
+          row.style.transition = 'opacity .3s';
+          row.style.opacity = '0';
+          setTimeout(function() {{ row.remove(); }}, 350);
+        }}
+        _done(true);
+      }} else {{ _done(false, d.error); }}
+    }})
+    .catch(function(err) {{ _done(false, String(err)); }});
+
+  }} else if (action.type === 'edit') {{
+    var newQ = (document.getElementById('editQuestionText').value || '').trim();
+    if (!newQ) {{
+      confirmBtn.disabled = false;
+      confirmBtn.textContent = 'Confirm';
+      alert('Question cannot be empty.');
+      return;
+    }}
+    fetch('/api/pdf_qa?id=' + encodeURIComponent(action.id), {{
+      method: 'PATCH',
+      headers: {{'Content-Type': 'application/json'}},
+      body: JSON.stringify({{question: newQ, reason: reason, reason_detail: detail, date: action.date}})
+    }})
+    .then(function(r) {{ return r.json(); }})
+    .then(function(d) {{
+      if (d.ok) {{
+        var row = document.getElementById('pr-row-' + action.id);
+        if (row) {{
+          var span = row.querySelector('.pr-q-text');
+          if (span) span.textContent = newQ;
+          var editBtn = row.querySelector('.pr-edit-btn');
+          if (editBtn) editBtn.dataset.q = newQ;
+        }}
+        _done(true);
+      }} else {{ _done(false, d.error); }}
+    }})
+    .catch(function(err) {{ _done(false, String(err)); }});
+  }}
+}}
+
+function addQuestion(btn) {{
+  var row = btn.parentElement;
+  var input = row.querySelector('.pr-add-input');
+  var pdfName = input ? input.dataset.pdf : '';
+  var question = (input ? input.value : '').trim();
+  if (!question || !pdfName) return;
+  btn.disabled = true;
+  btn.textContent = 'Adding…';
+  fetch('/api/pdf_qa', {{
+    method: 'PUT',
+    headers: {{'Content-Type': 'application/json'}},
+    body: JSON.stringify({{question: question, pdf_name: pdfName, date: _PAGE_DATE}})
+  }})
+  .then(function(r) {{ return r.json(); }})
+  .then(function(d) {{
+    btn.disabled = false;
+    btn.textContent = '&#65291; Add';
+    if (d.ok) {{
+      if (input) input.value = '';
+      _fetchPrereads();
+    }} else {{ alert('Error: ' + (d.error || 'unknown')); }}
+  }})
+  .catch(function(err) {{
+    btn.disabled = false;
+    btn.textContent = '&#65291; Add';
+    alert('Failed: ' + String(err));
+  }});
+}}
+
 // ── Run brief ──────────────────────────────────────────────────────────────────
 {run_brief_fn}
 
@@ -795,7 +1087,7 @@ document.addEventListener('DOMContentLoaded', function() {{
 
   // Restore tab from URL hash
   var hash = (window.location.hash || '').replace('#','');
-  if (hash === 'actions' || hash === 'seatalk') {{
+  if (hash === 'actions' || hash === 'seatalk' || hash === 'prereads') {{
     switchTab(hash);
   }} else {{
     // Pre-fetch action items silently to populate badge even while on Briefing tab
