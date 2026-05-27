@@ -1,5 +1,5 @@
 ---
-description: Generate Shuning's read-only executive daily briefing from work Gmail, the work calendar, and Google Drive. Use only when Shuning explicitly invokes /daily-brief or directly asks for an inbox plus calendar briefing. Review new activity since the last saved briefing, identify direct asks, deadlines, prep, conflicts, risks, Drive file changes, and produce a concise action-oriented summary.
+description: Generate Shuning's read-only executive daily briefing from work Gmail and the work calendar. Use only when Shuning explicitly invokes /daily-brief or directly asks for an inbox plus calendar briefing. Review the past 24 hours of email and calendar activity, identify direct asks, deadlines, prep needs, risks, and produce a concise action-oriented summary.
 argument-hint: "[optional date override or focus]"
 ---
 
@@ -23,8 +23,7 @@ Optional user arguments:
 - Gmail scope: work Gmail only
 - Calendar scope: work calendar only
 - Timezone: Asia/Singapore
-- Default lookback: since the last saved briefing checkpoint
-- First-run fallback: previous 72 hours
+- Default lookback: always the past 24 hours from time of run (rolling window, not since last briefing)
 
 ## Files used by this skill
 - Checkpoint file: `.claude/state/daily-brief.json`
@@ -46,11 +45,10 @@ Recommended checkpoint structure:
 ```
 
 ## Step 1: determine the time window
-1. Read `.claude/state/daily-brief.json` if it exists.
-2. Use `last_briefing_at` as the default lower bound.
-3. If the file is missing, invalid, or empty, fall back to the previous 72 hours.
-4. If Shuning explicitly specifies a time window, use that instead.
-5. State the effective review window near the top of the briefing.
+1. The default window is always **the past 24 hours** from the current Singapore time (e.g. if it is 08:30 SGT now, look from 08:30 SGT yesterday to now). Do not use the checkpoint date as the lower bound.
+2. Read `.claude/state/daily-brief.json` only to record the previous run for the delta comparison in Step 7.
+3. If Shuning explicitly specifies a time window in the conversation, use that instead.
+4. State the effective review window near the top of the briefing (e.g. "Review window: 2026-05-26 08:30 SGT → 2026-05-27 08:30 SGT").
 
 ## Step 2: collect email signals
 Review new and newly relevant email activity since the effective lower bound.
@@ -88,48 +86,7 @@ Email handling rules:
 - If reply status cannot be confirmed, say `reply status unclear` rather than guessing.
 - Prefer concrete output: sender, subject, due date, requested action, and why it matters.
 
-## Step 3: collect Google Drive signals
-Review Google Drive files modified within the effective review window using the `gws` CLI.
-
-### Queries to run
-Run up to 3 `gws drive files list` queries. Adjust the date range to match the effective review window from Step 1. Use `--page-all` if results may exceed one page.
-
-1. **Recently modified files not owned by Shuning** (catches new shares and collaborator edits):
-   ```bash
-   gws drive files list --params '{"q": "modifiedTime > '\''LOWER_BOUND_ISO'\'' and not '\''me'\'' in owners", "fields": "files(id,name,owners,modifiedTime,webViewLink,shared,sharingUser,createdTime)", "pageSize": "100"}'
-   ```
-
-2. **Files with "TWCB" in the title** (job-scope keyword):
-   ```bash
-   gws drive files list --params '{"q": "name contains '\''TWCB'\'' and modifiedTime > '\''LOWER_BOUND_ISO'\''", "fields": "files(id,name,owners,modifiedTime,webViewLink)", "pageSize": "50"}'
-   ```
-
-3. **Files containing Shuning's name** (direct address via full-text search):
-   ```bash
-   gws drive files list --params '{"q": "fullText contains '\''Shuning'\'' and modifiedTime > '\''LOWER_BOUND_ISO'\''", "fields": "files(id,name,owners,modifiedTime,webViewLink)", "pageSize": "50"}'
-   ```
-
-Replace `LOWER_BOUND_ISO` with the effective lower-bound timestamp in RFC 3339 format (e.g. `2026-04-05T00:00:00+08:00`).
-
-### Relevance criteria
-A file is flagged as important if any of these are true:
-- **Newly shared with Shuning** — the file was not previously accessible to him (e.g. `createdTime` ≈ `modifiedTime` for his view, or `sharingUser` is present)
-- **Title contains "TWCB"** — relevant to Shuning's job scope
-- **Addresses Shuning directly** — file content or comments mention him by name
-
-### What to capture for each relevant file
-- File name (with `webViewLink` so Shuning can click through)
-- Owner
-- Last modified time (Singapore time)
-- What changed: new share, content edit, or comment
-- Why it was flagged (TWCB / shared / direct address)
-
-### Suppression rules
-- Suppress files Shuning owns and edited himself (self-edits are not news)
-- Suppress trivial or auto-generated files (e.g. system logs, temp files) unless they match TWCB or direct-address criteria
-- Deduplicate files that appear in multiple queries
-
-## Step 4: collect calendar signals
+## Step 3: collect calendar signals
 Review today's work calendar and also tomorrow's first meeting.
 
 Always include:
@@ -288,12 +245,46 @@ Use checkboxes grouped by priority:
 Each item should be phrased as an action, not just an observation.
 
 ### 2b) Open Action Items
-After the prioritized checklist, include this section:
 
-Load `.claude/state/open-action-items.json`. List every item where `done: false`. Format each as:
-- `[ ] **[source]** — [action] — ETA: [eta or TBD]`
+Load `.claude/state/open-action-items.json`. Display every item where `done: false` as a color-coded table, sorted by urgency (most urgent first).
+
+**Color coding rule** (compute from today's SGT date and the item's `eta` + `urgency` fields):
+- 🔴 **Chase now** — ETA is today or already overdue, OR no ETA and `urgency` = `"high"`
+- 🟠 **Chase soon** — ETA is 1–3 days away
+- 🟡 **Watch** — ETA is 4–7 days away
+- 🟢 **Can wait** — ETA is 8+ days away
+- ⚪ **When possible** — no ETA and `urgency` is `"low"`, `"medium"`, or `null`
+
+Sort order within the table: 🔴 → 🟠 → 🟡 → 🟢 → ⚪. Within each color, sort by ETA ascending.
+
+```
+## Open Action Items
+
+🔴 Chase now  🟠 Chase soon (≤3 days)  🟡 Watch (4–7 days)  🟢 Can wait (8+ days)  ⚪ When possible
+
+| | Action | Source | ETA | Chase? |
+|--|--------|--------|-----|--------|
+| 🔴 | [action text] | Email / SeaTalk: [thread or channel name] | overdue / today | Chase now |
+| 🟠 | [action text] | Email: [thread] | May 29 (2 days) | Chase soon |
+| 🟡 | [action text] | Email: [thread] | Jun 5 (9 days) | Watch |
+| ⚪ | [action text] | SeaTalk: [channel] | — | When possible |
+```
 
 If the file doesn't exist or has no open items, write: `No open action items.`
+
+**Adding new items:** When you find a new action item for Shuning in a key-domain email thread or SeaTalk message, append it to `.claude/state/open-action-items.json` before producing the briefing. Use this schema:
+```json
+{
+  "id": "unique-kebab-slug",
+  "source": "email subject or SeaTalk channel/thread",
+  "source_type": "email" | "seatalk",
+  "date_identified": "YYYY-MM-DD",
+  "action": "one-sentence description of what Shuning needs to do",
+  "eta": "YYYY-MM-DD or null",
+  "urgency": "high" | "medium" | "low" | null,
+  "done": false
+}
+```
 
 ### 3) Today's schedule table
 Use a markdown table with these columns:
@@ -302,16 +293,7 @@ Use a markdown table with these columns:
 - Why it matters
 - Prep / owner note
 
-### 4) Google Drive updates
-Include this section when there are relevant Drive file changes. For each file show:
-- File name as a clickable link (using `webViewLink`)
-- Owner
-- What changed: new share, content edit, or comment
-- Why it was flagged: `TWCB` keyword / newly shared / addresses Shuning directly
-
-Group by reason when there are many items. Skip this section entirely if no relevant Drive activity was found.
-
-### 5) Meeting pre-reads
+### 4) Meeting pre-reads
 Include this section when important meetings exist today. For each important meeting:
 - **[Meeting name]** — [time, SGT]
   - Source: attachment name, type, and sender
@@ -358,12 +340,6 @@ Compare today's calendar events against what was listed in the previous briefing
 Format as:
 - **[Meeting title]** — [what changed: rescheduled / cancelled / VIP added / details updated]
 
-### 8c. Pre-read document changes
-Compare Drive signals from Step 3 against documents flagged in the previous briefing. Flag any pre-read file for an upcoming meeting that has been modified since the last briefing.
-
-Format as:
-- **[File name]** (for [meeting name]) — updated [HH:mm SGT], owner: [name]
-
 If the last briefing was less than 1 hour ago, or no previous briefing file exists, skip this step entirely.
 
 ## Step 9: save the result locally
@@ -389,7 +365,7 @@ Before finishing, verify that the briefing answers:
 - What needs prep?
 - What is risky or slipping?
 - What can safely wait?
-- Are there Drive file changes Shuning should be aware of?
 - Were pre-reads found and summarized for today's important meetings?
+- Is the Open Action Items table complete and correctly color-coded?
 
 If any of those remain unanswered and the source tools could answer them, check once more before concluding.

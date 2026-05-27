@@ -181,6 +181,10 @@ Every daily briefing should follow this structure:
 
 **Executive brief rule:** Only surface items in the executive brief that are P0 — meaning they are related to a key domain (Swarm/OSP, SIP, FP&A, Budget, BPM) or require Shuning's direct action today. Non-key-domain items, even with VIP involvement, belong in the P1 checklist only — not the executive brief.
 
+**Lookback window:** Always use the past 24 hours from the time of the run. Never use "since the last briefing" as the lower bound — the window is always a fixed rolling 24h.
+
+**No Google Drive scanning.** Do not run any Drive queries. Do not include a Drive updates section in the briefing.
+
 The sections in order when relevant:
    - What matters today
    - What can wait
@@ -233,19 +237,44 @@ When reading key domain (Swarm/OSP, SIP, FP&A, Budget, BPM) email threads, meeti
 [
   {
     "id": "unique-kebab-slug",
-    "source": "email subject or meeting title",
+    "source": "email subject or SeaTalk channel/thread",
+    "source_type": "email or seatalk",
     "date_identified": "YYYY-MM-DD",
     "action": "one-sentence description of what Shuning needs to do",
     "eta": "YYYY-MM-DD or null",
+    "urgency": "high | medium | low | null",
     "done": false
   }
 ]
 ```
 
+### Color coding (compute in every brief)
+- 🔴 **Chase now** — ETA today or overdue, OR no ETA + `urgency: "high"`
+- 🟠 **Chase soon** — ETA 1–3 days away
+- 🟡 **Watch** — ETA 4–7 days away
+- 🟢 **Can wait** — ETA 8+ days away
+- ⚪ **When possible** — no ETA, urgency low/medium/null
+
+### Widget format (render in every brief after the Prioritized Checklist)
+```
+## Open Action Items
+
+🔴 Chase now  🟠 Chase soon (≤3 days)  🟡 Watch (4–7 days)  🟢 Can wait (8+ days)  ⚪ When possible
+
+| | Action | Source | ETA | Chase? |
+|--|--------|--------|-----|--------|
+| 🔴 | ... | Email: thread name | overdue | Chase now |
+| 🟠 | ... | Email: thread name | May 29 (2 days) | Chase soon |
+| 🟡 | ... | SeaTalk: channel | Jun 5 (9 days) | Watch |
+| ⚪ | ... | Email: thread name | — | When possible |
+```
+
+Sort order: 🔴 → 🟠 → 🟡 → 🟢 → ⚪. Within same color, sort by ETA ascending.
+
 ### Rules
-- **Add** items when new action items for Shuning are found in key domain threads or meeting pre-reads.
+- **Add** items when new action items for Shuning are found in key domain email threads, meeting pre-reads, or SeaTalk messages.
 - **Never auto-close** items. Only Shuning marks them done (verbally: "mark X as done" → update `done: true`).
-- **Every daily briefing must include an "Open Action Items" section** immediately after the Prioritized Checklist, listing all items where `done: false`. Show source, action, and ETA.
+- **Every daily briefing must include the Open Action Items widget** immediately after the Prioritized Checklist.
 - If the state file does not exist, create it as an empty array `[]` and populate as items are found.
 
 ## SeaTalk question tracking
