@@ -921,7 +921,8 @@ function _renderPrereads(items) {{
       var qc = groups[pdfName].filter(function(x) {{ return x.slide_ref !== 'Summary'; }}).length;
       html += '<button class="pr-subtab' + (i === 0 ? ' active' : '') + '"'
         + ' id="pr-subtab-' + sid + '"'
-        + ' onclick="switchPdfTab(' + JSON.stringify(sid) + ')">'
+        + ' data-sid="' + sid + '"'
+        + ' onclick="switchPdfTab(this.dataset.sid)">'
         + '&#128196; ' + escHtml(label)
         + ' <span style="font-size:.72rem;opacity:.65;margin-left:4px">(' + qc + 'q)</span>'
         + '</button>';
@@ -958,12 +959,14 @@ function _renderPrereads(items) {{
         + '</div></div>';
     }}
 
-    // View toggle
+    // View toggle — use data-sid/data-view to avoid quoting issues in onclick
     html += '<div class="pr-view-toggle">'
       + '<button class="pr-view-btn active" id="pr-vbtn-q-' + sid + '"'
-      +   ' onclick="switchPrView(' + JSON.stringify(sid) + ',\'q\')">&#128203; Questions</button>'
+      +   ' data-sid="' + sid + '" data-view="q"'
+      +   ' onclick="switchPrView(this.dataset.sid,this.dataset.view)">&#128203; Questions</button>'
       + '<button class="pr-view-btn" id="pr-vbtn-a-' + sid + '"'
-      +   ' onclick="switchPrView(' + JSON.stringify(sid) + ',\'a\')">&#128161; Proposed Answers</button>'
+      +   ' data-sid="' + sid + '" data-view="a"'
+      +   ' onclick="switchPrView(this.dataset.sid,this.dataset.view)">&#128161; Proposed Answers</button>'
       + '</div>';
 
     var nonSummary = qs.filter(function(x) {{ return x.slide_ref !== 'Summary'; }});
