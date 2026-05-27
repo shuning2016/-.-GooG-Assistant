@@ -3,14 +3,18 @@
 
 GET  /api/action_items          → JSON list of all items (done and open)
 POST /api/action_items?id=ID    → Mark item with given id as done; returns updated item
+PUT  /api/action_items          → Create a new manual action item; returns created item
 """
 
 import json
 import os
 import sys
+import time
 import urllib.parse
+from datetime import datetime
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import parse_qs, urlparse
+from zoneinfo import ZoneInfo
 
 from upstash_redis import Redis
 
@@ -73,6 +77,49 @@ class handler(BaseHTTPRequestHandler):
                 return
             _save_items(r, items)
             self._json(200, {"ok": True, "item": updated})
+        except Exception as exc:
+            self._json(500, {"error": str(exc)})
+
+    def do_PUT(self):
+        """Create a new manual action item from JSON body."""
+        if not self._auth():
+            return
+        try:
+            length = int(self.headers.get("Content-Length", 0))
+            raw = self.rfile.read(length)
+            data = json.loads(raw.decode("utf-8"))
+        except Exception:
+            self._json(400, {"error": "Invalid JSON body"})
+            return
+
+        action = str(data.get("action") or "").strip()
+        if not action:
+            self._json(400, {"error": "action is required"})
+            return
+
+        item_id = "manual-" + str(int(time.time() * 1000))
+        sgt_date = datetime.now(ZoneInfo("Asia/Singapore")).strftime("%Y-%m-%d")
+        source_raw = str(data.get("source") or "").strip()
+        eta_raw = str(data.get("eta") or "").strip() or None
+        urgency_raw = str(data.get("urgency") or "").strip() or None
+
+        new_item = {
+            "id": item_id,
+            "source": source_raw if source_raw else "Manual entry",
+            "source_type": "manual",
+            "date_identified": sgt_date,
+            "action": action,
+            "eta": eta_raw,
+            "urgency": urgency_raw,
+            "done": False,
+        }
+
+        try:
+            r = _redis()
+            items = _load_items(r)
+            items.append(new_item)
+            _save_items(r, items)
+            self._json(201, {"ok": True, "item": new_item})
         except Exception as exc:
             self._json(500, {"error": str(exc)})
 

@@ -77,6 +77,7 @@ def main() -> None:
         redis_done: set[str] = {
             item["id"] for item in redis_items if item.get("done") and item.get("id")
         }
+        local_ids: set[str] = {item.get("id", "") for item in local_items}
 
         merged: list[dict] = []
         for item in local_items:
@@ -86,6 +87,13 @@ def main() -> None:
                 merged.append({**item, "done": True})
             else:
                 merged.append(item)
+
+        # Preserve items that only exist in Redis (e.g., added via the web UI "Add Item" form).
+        # Without this, a sync run would silently delete web-UI-created manual items.
+        for redis_item in redis_items:
+            rid = redis_item.get("id", "")
+            if rid and rid not in local_ids:
+                merged.append(redis_item)
 
         # Write merged state back to Redis
         r.set("open-action-items", json.dumps(merged), ex=30 * 24 * 3600)  # 30-day TTL

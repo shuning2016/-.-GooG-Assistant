@@ -43,34 +43,37 @@ def _render_html(briefing_md: str, date_str: str) -> str:
     )
     turl = _trigger_url()
     run_btn = (
-        f'<button class="run-btn" id="runBtn" onclick="runBrief()">&#9654; Run Now</button>'
+        '<button class="run-btn" id="runBtn" onclick="runBrief()">&#9654; Run Now</button>'
         if turl else ""
     )
-    # Build the runBrief JS function as a separate variable — nested f-strings
-    # with the same quote type are a syntax error in Python < 3.12 (Vercel runtime).
+    # Build runBrief as string concat (avoids nested f-string quoting issues)
     run_brief_fn = (
         "function runBrief() {\n"
         "  if (!_confirmIfRecent('main', 'Daily brief')) return;\n"
         "  _setLastRun('main');\n"
         "  var btn = document.getElementById('runBtn');\n"
-        "  if (btn) { btn.disabled = true; btn.textContent = 'Running\u2026'; }\n"
+        "  if (btn) { btn.disabled = true; btn.textContent = 'Running…'; }\n"
         f"  window.location.href = '{turl}';\n"
         "}"
     ) if turl else ""
+
+    stale_regen = (
+        '<button class="stale-regen" onclick="runBrief()">&#9654; Run today\'s brief</button>'
+        if turl else ""
+    )
 
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Daily Brief \u2014 {date_str}</title>
+<title>Daily Brief — {date_str}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root {{
     --primary: #EE4D2D;
-    --primary-dark: #c73e24;
     --teal:    #0080C6;
     --navy:    #172B4D;
     --green:   #16a34a;
@@ -82,6 +85,7 @@ def _render_html(briefing_md: str, date_str: str) -> str:
     --muted:   #6b7280;
     --border:  #e5e7eb;
     --header-h: 58px;
+    --tabnav-h: 45px;
   }}
   *{{box-sizing:border-box;margin:0;padding:0}}
   body{{font-family:'Roboto',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
@@ -91,175 +95,153 @@ def _render_html(briefing_md: str, date_str: str) -> str:
   .navbar{{
     position:sticky;top:0;z-index:200;height:var(--header-h);
     background:linear-gradient(135deg,#EE4D2D 0%,#172B4D 100%);
-    color:#fff;padding:0 28px;
+    color:#fff;padding:0 24px;
     display:flex;align-items:center;gap:10px;
     box-shadow:0 2px 12px rgba(238,77,45,.35);
   }}
   .navbar-title{{font-size:1.05rem;font-weight:700;letter-spacing:.3px;flex:1}}
-  .navbar-date{{
-    font-size:.78rem;background:rgba(255,255,255,.1);
-    border-radius:20px;padding:4px 12px;white-space:nowrap;
-  }}
+  .navbar-date{{font-size:.78rem;background:rgba(255,255,255,.1);border-radius:20px;padding:4px 12px;white-space:nowrap}}
   .navbar-tz{{font-size:.72rem;opacity:.5}}
   .run-btn{{
-    background:var(--primary);color:#fff;border:none;border-radius:6px;
-    padding:7px 16px;font-size:.82rem;font-weight:600;cursor:pointer;
-    white-space:nowrap;transition:opacity .15s;letter-spacing:.2px;
+    background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.4);
+    border-radius:6px;padding:7px 16px;font-size:.82rem;font-weight:600;cursor:pointer;
+    white-space:nowrap;transition:opacity .15s;font-family:inherit;
   }}
   .run-btn:hover{{opacity:.85}}
   .run-btn:disabled{{opacity:.45;cursor:default}}
-  /* SeaTalk check button */
-  .st-btn{{
-    background:var(--teal);color:#fff;border:none;border-radius:6px;
-    padding:7px 14px;font-size:.82rem;font-weight:600;cursor:pointer;
-    white-space:nowrap;transition:opacity .15s;letter-spacing:.2px;
-    display:flex;align-items:center;gap:6px;
-  }}
-  .st-btn:hover{{opacity:.85}}
-  .st-btn:disabled{{opacity:.45;cursor:default}}
-  /* Action items button */
-  .ai-btn{{
-    background:var(--navy);color:#fff;border:none;border-radius:6px;
-    padding:7px 14px;font-size:.82rem;font-weight:600;cursor:pointer;
-    white-space:nowrap;transition:opacity .15s;letter-spacing:.2px;
-  }}
-  .ai-btn:hover{{opacity:.85}}
-  .ai-btn.has-urgent{{background:var(--red)}}
-  .st-spinner{{
-    width:13px;height:13px;border:2px solid rgba(255,255,255,.35);
-    border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;
-    display:none;
-  }}
-  .st-btn.loading .st-spinner{{display:inline-block}}
-  .st-btn.loading .st-label{{opacity:.6}}
-  @keyframes spin{{to{{transform:rotate(360deg)}}}}
 
-  /* ── Action items drawer ── */
-  .ai-drawer{{
-    position:sticky;top:var(--header-h);z-index:189;
-    max-height:0;overflow:hidden;
-    transition:max-height .35s ease,box-shadow .35s ease;
-    background:#f0f4ff;border-bottom:2px solid var(--navy);
-    box-shadow:none;
+  /* ── Tab nav ── */
+  .tab-nav{{
+    position:sticky;top:var(--header-h);z-index:150;
+    background:#fff;border-bottom:2px solid var(--border);
+    display:flex;padding:0 20px;overflow-x:auto;
+    box-shadow:0 2px 6px rgba(0,0,0,.05);
   }}
-  .ai-drawer.open{{
-    max-height:600px;
-    box-shadow:0 4px 16px rgba(23,43,77,.15);
-    overflow-y:auto;
+  .tab-btn{{
+    background:none;border:none;border-bottom:3px solid transparent;
+    padding:13px 22px 10px;font-size:.9rem;font-weight:600;color:var(--muted);
+    cursor:pointer;margin-bottom:-2px;transition:color .15s,border-color .15s;
+    display:flex;align-items:center;gap:6px;white-space:nowrap;font-family:inherit;
+    flex-shrink:0;
   }}
-  .ai-inner{{max-width:940px;margin:0 auto;padding:18px 24px 20px}}
-  .ai-meta{{
-    display:flex;align-items:center;gap:12px;margin-bottom:12px;
-    font-size:.8rem;color:var(--navy);font-weight:600;
+  .tab-btn.active{{color:var(--primary);border-bottom-color:var(--primary)}}
+  .tab-btn:hover:not(.active){{color:var(--text);background:#fafafa}}
+  .tab-badge{{
+    background:var(--red);color:#fff;border-radius:10px;
+    padding:1px 6px;font-size:.68rem;font-weight:700;min-width:18px;
+    text-align:center;line-height:1.6;
   }}
-  .ai-close{{
-    margin-left:auto;background:none;border:none;font-size:1.1rem;
-    cursor:pointer;color:var(--navy);opacity:.7;line-height:1;padding:2px 6px;
+
+  /* ── Tab panels ── */
+  .tab-panel{{display:block}}
+  .tab-panel[hidden]{{display:none!important}}
+
+  /* ── Side panels (Actions, SeaTalk) ── */
+  .side-panel{{max-width:960px;margin:0 auto;padding:24px 18px 80px}}
+  .panel-card{{
+    background:var(--surface);border-radius:14px;padding:26px 30px;
+    box-shadow:0 1px 3px rgba(0,0,0,.06),0 4px 12px rgba(0,0,0,.04);
   }}
-  .ai-close:hover{{opacity:1}}
-  .ai-table{{width:100%;border-collapse:collapse;font-size:.85rem}}
+  .panel-header{{
+    display:flex;align-items:center;gap:10px;margin-bottom:20px;
+    padding-bottom:14px;border-bottom:2px solid var(--border);flex-wrap:wrap;
+  }}
+  .panel-title{{font-size:1.05rem;font-weight:700;color:var(--text);flex:1;min-width:0}}
+  .meta-time{{font-size:.77rem;color:var(--muted);white-space:nowrap}}
+  .refresh-btn{{
+    background:none;border:1px solid var(--border);border-radius:6px;
+    padding:6px 13px;font-size:.82rem;font-weight:500;cursor:pointer;
+    color:var(--text);transition:border-color .15s,background .15s;font-family:inherit;
+  }}
+  .refresh-btn:hover{{background:#f3f4f6;border-color:#9ca3af}}
+  .refresh-btn:disabled{{opacity:.5;cursor:default}}
+  .add-btn{{
+    background:var(--teal);color:#fff;border:none;border-radius:6px;
+    padding:7px 16px;font-size:.82rem;font-weight:600;cursor:pointer;
+    transition:opacity .15s;font-family:inherit;white-space:nowrap;
+  }}
+  .add-btn:hover{{opacity:.85}}
+
+  /* ── Add Item form ── */
+  .add-form-wrap{{
+    background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;
+    padding:16px 20px;margin-bottom:22px;
+  }}
+  .add-form-title{{font-size:.82rem;font-weight:700;color:var(--navy);margin-bottom:11px}}
+  .add-form-row{{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}}
+  .add-form-row input[type=text],
+  .add-form-row input[type=date],
+  .add-form-row select {{
+    border:1px solid #c7d0e8;border-radius:6px;padding:7px 10px;
+    font-size:.88rem;font-family:inherit;background:#fff;color:var(--text);
+    transition:border-color .15s;
+  }}
+  .add-form-row input:focus,.add-form-row select:focus{{
+    outline:2px solid var(--teal);border-color:var(--teal);
+  }}
+  .f-action{{flex:1;min-width:220px}}
+  .f-eta{{width:148px}}
+  .f-urgency{{width:132px}}
+  .f-source{{width:178px}}
+  .cancel-btn{{
+    background:none;border:1px solid var(--border);border-radius:6px;
+    padding:7px 14px;font-size:.82rem;cursor:pointer;color:var(--muted);
+    font-family:inherit;transition:background .15s;
+  }}
+  .cancel-btn:hover{{background:#f3f4f6}}
+
+  /* ── Action Items table ── */
+  .ai-table{{width:100%;border-collapse:collapse;font-size:.88rem}}
   .ai-table th{{
-    background:#e8edf7;padding:7px 10px;border:1px solid #c7d0e8;
-    text-align:left;color:var(--navy);font-weight:600;
+    background:#f4f6fb;padding:9px 11px;border:1px solid #d8dff0;
+    text-align:left;color:var(--navy);font-weight:600;white-space:nowrap;
   }}
-  .ai-table td{{padding:7px 10px;border:1px solid #d8dff0;vertical-align:top}}
-  .ai-table tr:nth-child(even) td{{background:#f5f7fc}}
+  .ai-table td{{padding:9px 11px;border:1px solid #e5e9f5;vertical-align:top}}
+  .ai-table tr:nth-child(even) td{{background:#f9fafc}}
+  /* Manual items — teal left accent + light blue tint */
+  .ai-row-manual td{{background:#f0faff!important}}
+  .ai-row-manual td:first-child{{border-left:3px solid var(--teal)}}
+  .manual-badge{{
+    display:inline-block;background:#e0f2fe;color:var(--teal);
+    border:1px solid #bae6fd;border-radius:3px;font-size:.65rem;
+    font-weight:700;padding:1px 5px;margin-left:5px;vertical-align:middle;
+  }}
   .ai-done-btn{{
-    background:none;border:1px solid #9ca3af;color:#6b7280;
-    border-radius:4px;padding:2px 9px;font-size:.75rem;cursor:pointer;
-    transition:all .15s;white-space:nowrap;
+    background:none;border:1px solid #d1d5db;color:#6b7280;
+    border-radius:4px;padding:3px 10px;font-size:.75rem;cursor:pointer;
+    transition:all .15s;white-space:nowrap;font-family:inherit;
   }}
   .ai-done-btn:hover{{background:var(--green);color:#fff;border-color:var(--green)}}
   .ai-done-btn:disabled{{opacity:.4;cursor:default}}
-  .ai-row-done td{{opacity:.4;text-decoration:line-through}}
-  .ai-empty{{color:#6b7280;font-size:.88rem;padding:10px 0}}
+  .ai-row-done td{{opacity:.38;text-decoration:line-through}}
+  .ai-empty{{color:var(--muted);padding:32px 0;text-align:center;font-size:.92rem}}
+  .loading-msg{{color:var(--muted);font-size:.9rem;padding:20px 0}}
 
-  /* ── SeaTalk drawer ── */
-  .st-drawer{{
-    position:sticky;top:var(--header-h);z-index:190;
-    max-height:0;overflow:hidden;
-    transition:max-height .35s ease,box-shadow .35s ease;
-    background:#EFF7FC;border-bottom:2px solid var(--teal);
-    box-shadow:none;
-  }}
-  .st-drawer.open{{
-    max-height:520px;
-    box-shadow:0 4px 16px rgba(0,128,198,.15);
-    overflow-y:auto;
-  }}
-  .st-inner{{
-    max-width:940px;margin:0 auto;padding:18px 24px 20px;
-  }}
-  .st-meta{{
-    display:flex;align-items:center;gap:12px;margin-bottom:12px;
-    font-size:.8rem;color:var(--teal);font-weight:600;
-  }}
-  .st-close{{
-    margin-left:auto;background:none;border:none;font-size:1.1rem;
-    cursor:pointer;color:var(--teal);opacity:.7;line-height:1;padding:2px 6px;
-  }}
-  .st-close:hover{{opacity:1}}
-  .st-refresh{{
-    background:none;border:none;font-size:1rem;
-    cursor:pointer;color:var(--teal);opacity:.7;line-height:1;padding:2px 6px;
-    transition:transform .35s;
-  }}
-  .st-refresh:hover{{opacity:1;transform:rotate(180deg)}}
-  .st-body h3{{font-size:.95rem;color:#172B4D;margin:1rem 0 .3rem;font-weight:700}}
+  /* ── SeaTalk content ── */
+  .st-body h3{{font-size:.95rem;color:var(--text);margin:1rem 0 .3rem;font-weight:700}}
   .st-body p{{margin:.4rem 0;font-size:.88rem;color:#374151}}
   .st-body ul{{padding-left:0;list-style:none;margin:.3rem 0}}
   .st-body li{{
     font-size:.88rem;margin:.5rem 0;color:#374151;
     padding:.5rem .75rem;background:#f8fafc;
-    border-radius:6px;border-left:3px solid var(--border);
-    line-height:1.55;
+    border-radius:6px;border-left:3px solid var(--border);line-height:1.55;
   }}
   .st-body strong{{color:var(--text)}}
-  .st-body .p0-badge{{
-    display:inline-block;background:#fef2f2;color:var(--red);
-    border:1px solid #fecaca;border-radius:4px;font-size:.68rem;
-    font-weight:700;padding:1px 5px;margin-right:5px;vertical-align:middle;
-  }}
-  .st-body .p1-badge{{
-    display:inline-block;background:#fffbeb;color:var(--amber);
-    border:1px solid #fde68a;border-radius:4px;font-size:.68rem;
-    font-weight:700;padding:1px 5px;margin-right:5px;vertical-align:middle;
-  }}
-  .st-body .p2-badge{{
-    display:inline-block;background:#f0f9ff;color:#0369a1;
-    border:1px solid #bae6fd;border-radius:4px;font-size:.68rem;
-    font-weight:700;padding:1px 5px;margin-right:5px;vertical-align:middle;
-  }}
-  .st-error{{
-    color:#9f1239;background:#fff1f2;border:1px solid #fecdd3;
-    border-radius:8px;padding:12px 16px;font-size:.88rem;
-  }}
-  /* ── SeaTalk source pills, VIP / Friend badges, section dividers ── */
-  .st-src{{
-    display:inline-flex;align-items:center;
-    font-size:.7rem;font-weight:700;border-radius:4px;
-    padding:2px 7px;margin-right:6px;white-space:nowrap;vertical-align:middle;
-  }}
+  .st-body .p0-badge{{display:inline-block;background:#fef2f2;color:var(--red);border:1px solid #fecaca;border-radius:4px;font-size:.68rem;font-weight:700;padding:1px 5px;margin-right:5px;vertical-align:middle}}
+  .st-body .p1-badge{{display:inline-block;background:#fffbeb;color:var(--amber);border:1px solid #fde68a;border-radius:4px;font-size:.68rem;font-weight:700;padding:1px 5px;margin-right:5px;vertical-align:middle}}
+  .st-body .p2-badge{{display:inline-block;background:#f0f9ff;color:#0369a1;border:1px solid #bae6fd;border-radius:4px;font-size:.68rem;font-weight:700;padding:1px 5px;margin-right:5px;vertical-align:middle}}
+  .st-error{{color:#9f1239;background:#fff1f2;border:1px solid #fecdd3;border-radius:8px;padding:12px 16px;font-size:.88rem}}
+  .st-src{{display:inline-flex;align-items:center;font-size:.7rem;font-weight:700;border-radius:4px;padding:2px 7px;margin-right:6px;white-space:nowrap;vertical-align:middle}}
   .st-src-group{{background:#EFF7FC;color:var(--teal);border:1px solid #bae6fd}}
   .st-src-dm{{background:#f5f3ff;color:#7c3aed;border:1px solid #ddd6fe}}
-  .st-friend{{
-    display:inline-block;background:#fef9c3;color:#854d0e;
-    border:1px solid #fde68a;border-radius:4px;font-size:.65rem;
-    font-weight:700;padding:1px 5px;margin-left:4px;vertical-align:middle;
-  }}
+  .st-friend{{display:inline-block;background:#fef9c3;color:#854d0e;border:1px solid #fde68a;border-radius:4px;font-size:.65rem;font-weight:700;padding:1px 5px;margin-left:4px;vertical-align:middle}}
   .st-body strong.st-vip{{color:var(--primary)}}
   .st-body .st-action{{color:var(--primary);font-weight:700}}
-  .st-section{{
-    display:flex;align-items:center;gap:8px;
-    margin:1rem 0 .4rem;padding-top:.75rem;
-    border-top:2px solid var(--border);
-  }}
+  .st-section{{display:flex;align-items:center;gap:8px;margin:1rem 0 .4rem;padding-top:.75rem;border-top:2px solid var(--border)}}
   .st-section:first-of-type{{border-top:none;margin-top:.2rem;padding-top:0}}
 
-  /* ── Layout ── */
+  /* ── Briefing layout ── */
   .page{{max-width:940px;margin:28px auto;padding:0 18px 80px}}
-
-  /* ── Cards ── */
   .card{{
     background:var(--surface);border-radius:14px;
     padding:28px 32px;margin-bottom:16px;
@@ -268,175 +250,219 @@ def _render_html(briefing_md: str, date_str: str) -> str:
 
   /* ── Typography ── */
   h1{{font-size:1.55rem;color:var(--text);margin:1.4rem 0 .5rem;font-weight:700}}
-  h2{{
-    font-size:1.05rem;color:var(--text);
-    margin:1.6rem 0 .5rem;font-weight:700;
-    border-bottom:2px solid var(--border);padding-bottom:.35rem;
-    display:flex;align-items:center;gap:6px;
-  }}
+  h2{{font-size:1.05rem;color:var(--text);margin:1.6rem 0 .5rem;font-weight:700;border-bottom:2px solid var(--border);padding-bottom:.35rem;display:flex;align-items:center;gap:6px}}
   h3{{font-size:.95rem;color:#374151;margin:1.1rem 0 .3rem;font-weight:600}}
   p{{margin:.5rem 0;color:var(--text)}}
   ul,ol{{padding-left:1.4rem;margin:.35rem 0}}
   li{{margin:.3rem 0}}
   a{{color:var(--primary);text-decoration:none}}
   a:hover{{text-decoration:underline}}
-  blockquote{{
-    border-left:3px solid var(--primary);padding:8px 14px;
-    background:#fff0ec;border-radius:0 6px 6px 0;
-    margin:.6rem 0;color:#374151;font-style:italic;
-  }}
+  blockquote{{border-left:3px solid var(--primary);padding:8px 14px;background:#fff0ec;border-radius:0 6px 6px 0;margin:.6rem 0;color:#374151;font-style:italic}}
   hr{{border:none;border-top:1px solid var(--border);margin:1.2rem 0}}
-  code{{
-    background:#f1f3f5;padding:2px 6px;border-radius:4px;
-    font-family:'SF Mono',Menlo,Consolas,monospace;font-size:.85em;
-  }}
+  code{{background:#f1f3f5;padding:2px 6px;border-radius:4px;font-family:'SF Mono',Menlo,Consolas,monospace;font-size:.85em}}
   pre{{background:#f1f3f5;border-radius:8px;padding:16px;overflow-x:auto;margin:.7rem 0}}
   pre code{{background:none;padding:0}}
 
-  /* ── Tables ── */
+  /* ── Tables (in briefing body) ── */
   table{{border-collapse:collapse;width:100%;margin:.8rem 0;font-size:.88rem}}
-  th{{
-    background:#FDF1EE;font-weight:600;padding:9px 13px;
-    border:1px solid var(--border);text-align:left;color:var(--navy);
-  }}
+  th{{background:#FDF1EE;font-weight:600;padding:9px 13px;border:1px solid var(--border);text-align:left;color:var(--navy)}}
   td{{padding:8px 13px;border:1px solid var(--border);vertical-align:top}}
   tr:nth-child(even) td{{background:#f9fafb}}
 
-  /* ── Priority badges on list items ── */
-  li.p0-item{{list-style:none;padding-left:0;margin-left:-1.4rem;padding-left:1.4rem}}
-  li.p1-item{{list-style:none;padding-left:0;margin-left:-1.4rem;padding-left:1.4rem}}
-  li.p2-item{{list-style:none;padding-left:0;margin-left:-1.4rem;padding-left:1.4rem}}
-  li.p0-item::before{{
-    content:'P0';display:inline-block;
-    background:#fef2f2;color:var(--red);border:1px solid #fecaca;
-    border-radius:4px;font-size:.7rem;font-weight:700;
-    padding:1px 6px;margin-right:8px;vertical-align:middle;
-  }}
-  li.p1-item::before{{
-    content:'P1';display:inline-block;
-    background:#fffbeb;color:var(--amber);border:1px solid #fde68a;
-    border-radius:4px;font-size:.7rem;font-weight:700;
-    padding:1px 6px;margin-right:8px;vertical-align:middle;
-  }}
-  li.p2-item::before{{
-    content:'P2';display:inline-block;
-    background:#f0f9ff;color:#0369a1;border:1px solid #bae6fd;
-    border-radius:4px;font-size:.7rem;font-weight:700;
-    padding:1px 6px;margin-right:8px;vertical-align:middle;
-  }}
-
-  /* ── Checkboxes ── */
+  /* ── Priority badges ── */
+  li.p0-item,li.p1-item,li.p2-item{{list-style:none;margin-left:-1.4rem;padding-left:1.4rem}}
+  li.p0-item::before{{content:'P0';display:inline-block;background:#fef2f2;color:var(--red);border:1px solid #fecaca;border-radius:4px;font-size:.7rem;font-weight:700;padding:1px 6px;margin-right:8px;vertical-align:middle}}
+  li.p1-item::before{{content:'P1';display:inline-block;background:#fffbeb;color:var(--amber);border:1px solid #fde68a;border-radius:4px;font-size:.7rem;font-weight:700;padding:1px 6px;margin-right:8px;vertical-align:middle}}
+  li.p2-item::before{{content:'P2';display:inline-block;background:#f0f9ff;color:#0369a1;border:1px solid #bae6fd;border-radius:4px;font-size:.7rem;font-weight:700;padding:1px 6px;margin-right:8px;vertical-align:middle}}
   input[type=checkbox]{{margin-right:7px;accent-color:var(--primary);width:14px;height:14px}}
 
-  /* ── Stale brief banner ── */
-  .stale-banner{{
-    background:#fef3c7;border-bottom:2px solid #d97706;
-    padding:10px 24px;display:flex;align-items:center;gap:10px;
-    font-size:.88rem;color:#92400e;
-  }}
+  /* ── Stale banner ── */
+  .stale-banner{{background:#fef3c7;border-bottom:2px solid #d97706;padding:10px 24px;display:flex;align-items:center;gap:10px;font-size:.88rem;color:#92400e}}
   .stale-banner strong{{font-weight:700}}
-  .stale-regen{{
-    margin-left:auto;background:#d97706;color:#fff;border:none;
-    border-radius:5px;padding:5px 14px;font-size:.82rem;font-weight:600;
-    cursor:pointer;white-space:nowrap;
-  }}
-  .stale-regen:hover{{opacity:.85}}
+  .stale-regen{{margin-left:auto;background:#d97706;color:#fff;border:none;border-radius:5px;padding:5px 14px;font-size:.82rem;font-weight:600;cursor:pointer;white-space:nowrap;font-family:inherit}}
 
   /* ── Past meetings ── */
-  .past-item{{opacity:0.38;text-decoration:line-through;}}
-  .past-item::after{{content:' ✓';font-size:.8em;opacity:.7;text-decoration:none;display:inline;}}
+  .past-item{{opacity:.38;text-decoration:line-through}}
+  .past-item::after{{content:' ✓';font-size:.8em;opacity:.7;text-decoration:none;display:inline}}
 
-  /* ── Delta / What Changed section ── */
-  .delta-header{{
-    color:var(--primary) !important;
-    border-bottom-color:var(--primary) !important;
-  }}
-  .delta-body{{
-    background:#fff0ec;border-radius:8px;padding:10px 14px;margin:.4rem 0;
-  }}
+  /* ── Delta / What Changed ── */
+  .delta-header{{color:var(--primary)!important;border-bottom-color:var(--primary)!important}}
+  .delta-body{{background:#fff0ec;border-radius:8px;padding:10px 14px;margin:.4rem 0}}
 
   /* ── Back to top ── */
-  .btt{{
-    position:fixed;bottom:26px;right:26px;
-    background:var(--primary);color:#fff;border:none;border-radius:50%;
-    width:40px;height:40px;cursor:pointer;font-size:1.1rem;
-    box-shadow:0 2px 8px rgba(0,0,0,.2);
-    display:flex;align-items:center;justify-content:center;opacity:.75;
-    transition:opacity .15s;
-  }}
+  .btt{{position:fixed;bottom:26px;right:26px;background:var(--primary);color:#fff;border:none;border-radius:50%;width:40px;height:40px;cursor:pointer;font-size:1.1rem;box-shadow:0 2px 8px rgba(0,0,0,.2);display:flex;align-items:center;justify-content:center;opacity:.75;transition:opacity .15s;z-index:100}}
   .btt:hover{{opacity:1}}
 
   /* ── Responsive ── */
   @media(max-width:600px){{
-    .card{{padding:18px 16px}}
-    .page{{padding:0 10px 60px}}
+    .card,.panel-card{{padding:18px 16px}}
+    .page,.side-panel{{padding-left:10px;padding-right:10px}}
     .navbar{{padding:0 14px;gap:8px}}
     .navbar-tz,.navbar-date{{display:none}}
+    .tab-btn{{padding:12px 14px 10px;font-size:.82rem}}
+    .add-form-row{{flex-direction:column}}
+    .f-action,.f-eta,.f-urgency,.f-source{{width:100%!important;min-width:0!important}}
   }}
 </style>
 </head>
 <body>
+
 <nav class="navbar">
   <span class="navbar-title">&#9889; Daily Brief</span>
   <span class="navbar-date">{date_str}</span>
-  <span class="navbar-tz">Asia/Singapore</span>
-  <button class="ai-btn" id="aiBtn" onclick="toggleActionItems()">&#9989; Actions</button>
-  <button class="st-btn" id="stBtn" onclick="checkSeatalk()">
-    <span class="st-spinner" id="stSpinner"></span>
-    <span class="st-label">&#128172; SeaTalk</span>
-  </button>
+  <span class="navbar-tz">SGT</span>
   {run_btn}
 </nav>
 
-<!-- Action items drawer -->
-<div class="ai-drawer" id="aiDrawer">
-  <div class="ai-inner">
-    <div class="ai-meta">
-      <span>&#9989; Open Action Items</span>
-      <span id="aiMeta"></span>
-      <button class="ai-close" onclick="closeAiDrawer()" title="Close">&times;</button>
+<nav class="tab-nav">
+  <button class="tab-btn active" data-tab="briefing" onclick="switchTab('briefing')">
+    &#128196; Briefing
+  </button>
+  <button class="tab-btn" data-tab="actions" onclick="switchTab('actions')">
+    &#9989; Actions
+    <span id="actBadge" class="tab-badge" style="display:none"></span>
+  </button>
+  <button class="tab-btn" data-tab="seatalk" onclick="switchTab('seatalk')">
+    &#128172; SeaTalk
+  </button>
+</nav>
+
+<!-- ── Tab: Briefing ── -->
+<div id="tab-briefing" class="tab-panel">
+  <div id="staleBanner" style="display:none" class="stale-banner">
+    <span>&#9888;</span>
+    <span>This brief is from <strong>{date_str}</strong> — meetings may have already passed.</span>
+    {stale_regen}
+  </div>
+  <div class="page">
+    <div class="card">
+      {body}
     </div>
-    <div id="aiBody"><p class="ai-empty">Loading…</p></div>
   </div>
 </div>
 
-<!-- SeaTalk result drawer (hidden until button is clicked) -->
-<div class="st-drawer" id="stDrawer">
-  <div class="st-inner">
-    <div class="st-meta">
-      <span>&#128172; SeaTalk</span>
-      <span id="stMeta"></span>
-      <button class="st-refresh" id="stRefreshBtn" onclick="refreshSeatalk()" title="Refresh" style="display:none">&#8635;</button>
-      <button class="st-close" onclick="closeDrawer()" title="Close">&times;</button>
+<!-- ── Tab: Action Items ── -->
+<div id="tab-actions" class="tab-panel" hidden>
+  <div class="side-panel">
+    <div class="panel-card">
+      <div class="panel-header">
+        <span class="panel-title">&#9989; Action Items</span>
+        <span id="aiTimestamp" class="meta-time"></span>
+        <button class="refresh-btn" id="aiRefreshBtn" onclick="_fetchActionItems()">&#8635; Refresh</button>
+        <button class="add-btn" onclick="toggleAddForm()">&#65291; Add Item</button>
+      </div>
+
+      <div id="addFormWrap" hidden>
+        <form class="add-form-wrap" onsubmit="submitAddItem(event)">
+          <div class="add-form-title">&#128221; New Action Item</div>
+          <div class="add-form-row">
+            <input type="text" id="newAction" class="f-action" placeholder="Action description (required)" required>
+            <input type="date" id="newEta" class="f-eta" title="ETA (optional)">
+            <select id="newUrgency" class="f-urgency">
+              <option value="">Urgency</option>
+              <option value="high">&#128308; High</option>
+              <option value="medium">&#128992; Medium</option>
+              <option value="low">&#128994; Low</option>
+            </select>
+            <input type="text" id="newSource" class="f-source" placeholder="Source / context (optional)">
+            <button type="submit" class="add-btn" id="addSubmitBtn">Add</button>
+            <button type="button" class="cancel-btn" onclick="toggleAddForm()">Cancel</button>
+          </div>
+        </form>
+      </div>
+
+      <div id="aiContent"><p class="loading-msg">Loading…</p></div>
     </div>
-    <div class="st-body" id="stBody"></div>
   </div>
 </div>
 
-<div id="staleBanner" style="display:none" class="stale-banner">
-  <span>&#9888;</span>
-  <span>This brief is from <strong>{date_str}</strong> — meetings listed may have already passed.</span>
-  {f'<button class="stale-regen" onclick="runBrief()">&#9654; Run today\'s brief</button>' if turl else ''}
-</div>
-
-<div class="page">
-  <div class="card">
-    {body}
+<!-- ── Tab: SeaTalk ── -->
+<div id="tab-seatalk" class="tab-panel" hidden>
+  <div class="side-panel">
+    <div class="panel-card">
+      <div class="panel-header">
+        <span class="panel-title">&#128172; SeaTalk</span>
+        <span id="stTimestamp" class="meta-time"></span>
+        <button class="refresh-btn" id="stRefreshBtn" onclick="_fetchSeatalk(true)">&#8635; Refresh</button>
+      </div>
+      <div class="st-body" id="stContent"><p class="loading-msg">Loading…</p></div>
+    </div>
   </div>
 </div>
-<button class="btt" onclick="window.scrollTo({{top:0,behavior:'smooth'}})" title="Back to top">\u2191</button>
+
+<button class="btt" onclick="window.scrollTo({{top:0,behavior:'smooth'}})" title="Back to top">↑</button>
 
 <script>
-// ── Action Items ─────────────────────────────────────────────────────────────
-var _aiLoaded = false;
-var _aiOpen = false;
+var _PAGE_DATE = {json.dumps(date_str)};
+
+// ── Utilities ─────────────────────────────────────────────────────────────────
+function escHtml(s) {{
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}}
+function _sgtNow() {{
+  var sgt = new Date(Date.now() + 8 * 3600000);
+  return sgt.toISOString().slice(11,16) + ' SGT';
+}}
+function fmtDate(s) {{
+  if (!s) return '—';
+  try {{
+    var d = new Date(s + 'T00:00:00');
+    return d.toLocaleDateString('en-US', {{month:'short', day:'numeric'}});
+  }} catch(e) {{ return s; }}
+}}
+function fmtEta(eta, today) {{
+  if (!eta) return '—';
+  var days = Math.round((new Date(eta) - new Date(today)) / 86400000);
+  if (days < 0) return '<span style="color:var(--red);font-weight:600">overdue</span>';
+  if (days === 0) return '<span style="color:var(--red);font-weight:600">today</span>';
+  return escHtml(eta.slice(5)) + ' <span style="color:var(--muted)">(' + days + 'd)</span>';
+}}
+
+// ── localStorage helpers ───────────────────────────────────────────────────────
+function _getLastRun(type) {{
+  try {{ var v = localStorage.getItem('brief-last-run:' + type + ':' + _PAGE_DATE); return v ? parseInt(v,10) : null; }} catch(e) {{ return null; }}
+}}
+function _setLastRun(type) {{
+  try {{ localStorage.setItem('brief-last-run:' + type + ':' + _PAGE_DATE, Date.now().toString()); }} catch(e) {{}}
+}}
+function _confirmIfRecent(type, label) {{
+  var last = _getLastRun(type);
+  if (!last) return true;
+  var diff = Date.now() - last;
+  if (diff >= 7200000) return true;
+  var mins = Math.round(diff / 60000);
+  var ts = mins < 1 ? 'less than a minute' : mins + ' min' + (mins === 1 ? '' : 's');
+  return window.confirm(label + ' was already run ' + ts + ' ago. Run again?');
+}}
+
+// ── Tab system ─────────────────────────────────────────────────────────────────
+var _tabLoaded = {{briefing: true, actions: false, seatalk: false}};
+
+function switchTab(name) {{
+  document.querySelectorAll('.tab-btn').forEach(function(b) {{
+    b.classList.toggle('active', b.dataset.tab === name);
+  }});
+  document.querySelectorAll('.tab-panel').forEach(function(p) {{
+    p.hidden = (p.id !== 'tab-' + name);
+  }});
+  window.scrollTo({{top: 0, behavior: 'instant'}});
+  try {{ history.replaceState(null, '', '#' + name); }} catch(e) {{}}
+  if (!_tabLoaded[name]) {{
+    _tabLoaded[name] = true;
+    if (name === 'actions') _fetchActionItems();
+    if (name === 'seatalk') _fetchSeatalk(false);
+  }}
+}}
+
+// ── Action Items ──────────────────────────────────────────────────────────────
 var COLOR = {{'🔴':'#dc2626','🟠':'#ea580c','🟡':'#d97706','🟢':'#16a34a','⚪':'#9ca3af'}};
 var LABEL = {{'🔴':'Chase now','🟠':'Chase soon','🟡':'Watch','🟢':'Can wait','⚪':'When possible'}};
+var _addFormOpen = false;
 
 function _aiColor(item) {{
-  var urgency = item.urgency || null;
-  var eta = item.eta || null;
   var today = new Date().toISOString().slice(0,10);
+  var eta = item.eta || null;
+  var urgency = item.urgency || null;
   if (!eta && urgency === 'high') return '🔴';
   if (eta && eta <= today) return '🔴';
   if (eta) {{
@@ -448,53 +474,41 @@ function _aiColor(item) {{
   return '⚪';
 }}
 
-function toggleActionItems() {{
-  var drawer = document.getElementById('aiDrawer');
-  if (_aiOpen) {{
-    closeAiDrawer(); return;
-  }}
-  _aiOpen = true;
-  drawer.classList.add('open');
-  if (!_aiLoaded) _fetchActionItems();
-}}
-
-function closeAiDrawer() {{
-  _aiOpen = false;
-  document.getElementById('aiDrawer').classList.remove('open');
-}}
-
 function _fetchActionItems() {{
+  var btn = document.getElementById('aiRefreshBtn');
+  if (btn) {{ btn.disabled = true; btn.textContent = 'Loading…'; }}
   fetch('/api/action_items')
     .then(function(r) {{ return r.json(); }})
     .then(function(items) {{
-      _aiLoaded = true;
+      document.getElementById('aiTimestamp').textContent = 'Updated ' + _sgtNow();
+      if (btn) {{ btn.disabled = false; btn.innerHTML = '&#8635; Refresh'; }}
       _renderActionItems(items);
     }})
     .catch(function(err) {{
-      document.getElementById('aiBody').innerHTML =
-        '<p style="color:#9f1239">Failed to load: ' + String(err) + '</p>';
+      if (btn) {{ btn.disabled = false; btn.innerHTML = '&#8635; Refresh'; }}
+      document.getElementById('aiContent').innerHTML =
+        '<div class="st-error">Failed to load: ' + escHtml(String(err)) + '</div>';
     }});
 }}
 
 function _renderActionItems(items) {{
   var open = items.filter(function(i) {{ return !i.done; }});
-  var meta = document.getElementById('aiMeta');
-  meta.textContent = open.length + ' open';
 
-  // Highlight button red if urgent items exist
-  var hasUrgent = open.some(function(i) {{ return _aiColor(i) === '🔴'; }});
-  if (hasUrgent) document.getElementById('aiBtn').classList.add('has-urgent');
+  // Update tab badge
+  var urgent = open.filter(function(i) {{ return _aiColor(i) === '🔴'; }}).length;
+  var badge = document.getElementById('actBadge');
+  if (urgent > 0) {{ badge.textContent = String(urgent); badge.style.display = ''; }}
+  else {{ badge.style.display = 'none'; }}
 
   if (open.length === 0) {{
-    document.getElementById('aiBody').innerHTML = '<p class="ai-empty">No open action items 🎉</p>';
+    document.getElementById('aiContent').innerHTML =
+      '<p class="ai-empty">No open action items 🎉</p>';
     return;
   }}
 
-  // Sort: 🔴 → 🟠 → 🟡 → 🟢 → ⚪, then by ETA
   var order = ['🔴','🟠','🟡','🟢','⚪'];
-  open.sort(function(a,b) {{
-    var ca = _aiColor(a), cb = _aiColor(b);
-    var oi = order.indexOf(ca) - order.indexOf(cb);
+  open.sort(function(a, b) {{
+    var oi = order.indexOf(_aiColor(a)) - order.indexOf(_aiColor(b));
     if (oi !== 0) return oi;
     var ea = a.eta || 'z', eb = b.eta || 'z';
     return ea < eb ? -1 : ea > eb ? 1 : 0;
@@ -502,30 +516,43 @@ function _renderActionItems(items) {{
 
   var today = new Date().toISOString().slice(0,10);
   var html = '<table class="ai-table"><thead><tr>'
-    + '<th></th><th>Action</th><th>Source</th><th>ETA</th><th>Chase?</th><th></th>'
+    + '<th style="width:32px"></th>'
+    + '<th>Action</th>'
+    + '<th style="width:195px">Source</th>'
+    + '<th style="width:88px">Identified</th>'
+    + '<th style="width:115px">ETA</th>'
+    + '<th style="width:96px">Chase?</th>'
+    + '<th style="width:75px"></th>'
     + '</tr></thead><tbody>';
 
   open.forEach(function(item) {{
     var c = _aiColor(item);
-    var etaDisp = '—';
-    if (item.eta) {{
-      var days = Math.round((new Date(item.eta) - new Date(today)) / 86400000);
-      if (days < 0) etaDisp = '<span style="color:var(--red)">overdue</span>';
-      else if (days === 0) etaDisp = '<span style="color:var(--red)">today</span>';
-      else etaDisp = item.eta.slice(5) + ' (' + days + 'd)';
+    var isManual = (item.source_type === 'manual');
+    var rowClass = isManual ? ' class="ai-row-manual"' : '';
+
+    var srcText;
+    if (isManual) {{
+      srcText = escHtml(item.source || 'Manual entry')
+        + '<span class="manual-badge">Manual</span>';
+    }} else if (item.source_type === 'seatalk') {{
+      srcText = 'SeaTalk: ' + escHtml(item.source || '');
+    }} else {{
+      srcText = 'Email: ' + escHtml(item.source || '');
     }}
-    var srcLabel = (item.source_type === 'seatalk' ? 'SeaTalk: ' : 'Email: ') + escHtml(item.source || '');
-    html += '<tr id="ai-row-' + escHtml(item.id) + '">'
-      + '<td><span title="' + LABEL[c] + '">' + c + '</span></td>'
+
+    html += '<tr id="ai-row-' + escHtml(item.id) + '"' + rowClass + '>'
+      + '<td><span title="' + escHtml(LABEL[c] || '') + '" style="font-size:1.1rem">' + c + '</span></td>'
       + '<td>' + escHtml(item.action || '') + '</td>'
-      + '<td style="font-size:.8rem;color:#6b7280">' + srcLabel + '</td>'
-      + '<td style="white-space:nowrap">' + etaDisp + '</td>'
-      + '<td style="white-space:nowrap;color:' + (COLOR[c]||'#6b7280') + ';font-weight:600">' + LABEL[c] + '</td>'
+      + '<td style="font-size:.8rem;color:var(--muted)">' + srcText + '</td>'
+      + '<td style="font-size:.8rem;color:var(--muted);white-space:nowrap">' + fmtDate(item.date_identified) + '</td>'
+      + '<td>' + fmtEta(item.eta, today) + '</td>'
+      + '<td style="white-space:nowrap;color:' + (COLOR[c] || '#6b7280') + ';font-size:.82rem;font-weight:600">' + escHtml(LABEL[c] || '') + '</td>'
       + '<td><button class="ai-done-btn" data-id="' + escHtml(item.id) + '" onclick="markDone(this.dataset.id,this)">✓ Done</button></td>'
       + '</tr>';
   }});
+
   html += '</tbody></table>';
-  document.getElementById('aiBody').innerHTML = html;
+  document.getElementById('aiContent').innerHTML = html;
 }}
 
 function markDone(id, btn) {{
@@ -542,16 +569,15 @@ function markDone(id, btn) {{
           setTimeout(function() {{
             row.style.transition = 'opacity .4s';
             row.style.opacity = '0';
-            setTimeout(function() {{ row.remove(); }}, 400);
+            setTimeout(function() {{
+              row.remove();
+              // Refresh badge count
+              var badge = document.getElementById('actBadge');
+              var n = parseInt(badge.textContent || '1', 10) - 1;
+              if (n > 0) {{ badge.textContent = String(n); }}
+              else {{ badge.style.display = 'none'; }}
+            }}, 420);
           }}, 600);
-          // Update count
-          var meta = document.getElementById('aiMeta');
-          var n = parseInt(meta.textContent) - 1;
-          meta.textContent = n + ' open';
-          if (n === 0) {{
-            document.getElementById('aiBtn').classList.remove('has-urgent');
-            document.getElementById('aiBody').innerHTML = '<p class="ai-empty">No open action items 🎉</p>';
-          }}
         }}
       }} else {{
         btn.disabled = false;
@@ -566,167 +592,114 @@ function markDone(id, btn) {{
     }});
 }}
 
-// ── SeaTalk check ─────────────────────────────────────────────────────────────
-var _stDate = {json.dumps(date_str)};
-var _stContentLoaded = false;
-
-// ── localStorage helpers for 2-hour run confirmation ────────────────────────
-function _getLastRun(type) {{
-  try {{
-    var v = localStorage.getItem('brief-last-run:' + type + ':' + _stDate);
-    return v ? parseInt(v, 10) : null;
-  }} catch(e) {{ return null; }}
-}}
-function _setLastRun(type) {{
-  try {{
-    localStorage.setItem('brief-last-run:' + type + ':' + _stDate, Date.now().toString());
-  }} catch(e) {{}}
-}}
-function _confirmIfRecent(type, label) {{
-  var last = _getLastRun(type);
-  if (!last) return true;
-  var diffMs = Date.now() - last;
-  if (diffMs >= 2 * 60 * 60 * 1000) return true;
-  var mins = Math.round(diffMs / 60000);
-  var timeStr = mins < 1 ? 'less than a minute' : mins + ' min' + (mins === 1 ? '' : 's');
-  return window.confirm(label + ' was already run ' + timeStr + ' ago. Run again?');
-}}
-
-// Toggle: if data is already loaded, just open/close the drawer without re-fetching.
-function checkSeatalk() {{
-  var drawer = document.getElementById('stDrawer');
-  if (_stContentLoaded) {{
-    if (drawer.classList.contains('open')) {{
-      closeDrawer();
-    }} else {{
-      openDrawer();
-    }}
-    return;
+function toggleAddForm() {{
+  _addFormOpen = !_addFormOpen;
+  document.getElementById('addFormWrap').hidden = !_addFormOpen;
+  if (_addFormOpen) {{
+    var el = document.getElementById('newAction');
+    if (el) el.focus();
   }}
-  _fetchSeatalk(false);
 }}
 
-// Explicit refresh — always bypasses the 1-hour cache (force=1).
-function refreshSeatalk() {{
-  _stContentLoaded = false;
-  document.querySelector('#stBtn .st-label').innerHTML = '&#128172; SeaTalk';
-  _fetchSeatalk(true);
-}}
+function submitAddItem(e) {{
+  e.preventDefault();
+  var action  = (document.getElementById('newAction').value || '').trim();
+  var eta     = document.getElementById('newEta').value || null;
+  var urgency = document.getElementById('newUrgency').value || null;
+  var source  = (document.getElementById('newSource').value || '').trim() || null;
+  if (!action) return;
 
-function _fetchSeatalk(force) {{
-  var btn = document.getElementById('stBtn');
+  var btn = document.getElementById('addSubmitBtn');
   btn.disabled = true;
-  btn.classList.add('loading');
-  var loadingMsg = force
-    ? '<p style="color:#0080C6;font-size:.85rem">Re-fetching SeaTalk messages\u2026</p>'
-    : '<p style="color:#0080C6;font-size:.85rem">Fetching SeaTalk messages\u2026</p>';
-  document.getElementById('stBody').innerHTML = loadingMsg;
-  document.getElementById('stMeta').textContent = '';
-  document.getElementById('stRefreshBtn').style.display = 'none';
-  openDrawer();
+  btn.textContent = 'Adding…';
 
-  var url = '/api/seatalk_check?date=' + encodeURIComponent(_stDate) + (force ? '&force=1' : '');
-  fetch(url)
+  fetch('/api/action_items', {{
+    method: 'PUT',
+    headers: {{'Content-Type': 'application/json'}},
+    body: JSON.stringify({{action: action, eta: eta, urgency: urgency, source: source}})
+  }})
     .then(function(r) {{ return r.json(); }})
     .then(function(d) {{
       btn.disabled = false;
-      btn.classList.remove('loading');
+      btn.textContent = 'Add';
       if (d.ok) {{
-        _stContentLoaded = true;
-        var metaParts = [d.message_count + ' messages', d.generated_at];
-        if (d.cached && d.age_min > 0) {{
-          metaParts.push('cached \u00b7 ' + d.age_min + ' min ago');
-        }}
-        document.getElementById('stMeta').textContent = metaParts.join(' \u00b7 ');
-        document.getElementById('stBody').innerHTML = stMd(d.summary);
-        document.getElementById('stRefreshBtn').style.display = '';
-        document.querySelector('#stBtn .st-label').innerHTML = '&#128172; SeaTalk \u2713';
-        tagPriorities(document.getElementById('stBody'));
+        document.getElementById('newAction').value = '';
+        document.getElementById('newEta').value = '';
+        document.getElementById('newUrgency').value = '';
+        document.getElementById('newSource').value = '';
+        toggleAddForm();
+        _fetchActionItems();
       }} else {{
-        document.getElementById('stBody').innerHTML =
-          '<div class="st-error">' + escHtml(d.error) + '</div>';
+        alert('Error: ' + (d.error || 'unknown'));
       }}
     }})
     .catch(function(err) {{
       btn.disabled = false;
-      btn.classList.remove('loading');
-      document.getElementById('stBody').innerHTML =
+      btn.textContent = 'Add';
+      alert('Request failed: ' + String(err));
+    }});
+}}
+
+// ── SeaTalk ───────────────────────────────────────────────────────────────────
+var _stFetching = false;
+
+function _fetchSeatalk(force) {{
+  if (_stFetching) return;
+  _stFetching = true;
+  var btn = document.getElementById('stRefreshBtn');
+  if (btn) {{ btn.disabled = true; btn.textContent = '⏳ Fetching…'; }}
+  document.getElementById('stContent').innerHTML = '<p class="loading-msg">Fetching SeaTalk messages…</p>';
+  document.getElementById('stTimestamp').textContent = '';
+
+  var url = '/api/seatalk_check?date=' + encodeURIComponent(_PAGE_DATE) + (force ? '&force=1' : '');
+  fetch(url)
+    .then(function(r) {{ return r.json(); }})
+    .then(function(d) {{
+      _stFetching = false;
+      if (btn) {{ btn.disabled = false; btn.innerHTML = '&#8635; Refresh'; }}
+      if (d.ok) {{
+        var ts = d.generated_at || _sgtNow();
+        var cached = (d.cached && d.age_min > 0) ? ' · cached ' + d.age_min + 'min ago' : '';
+        document.getElementById('stTimestamp').textContent =
+          d.message_count + ' messages · ' + ts + cached;
+        document.getElementById('stContent').innerHTML = stMd(d.summary);
+        tagPriorities(document.getElementById('stContent'));
+      }} else {{
+        document.getElementById('stContent').innerHTML =
+          '<div class="st-error">' + escHtml(d.error || 'Unknown error') + '</div>';
+      }}
+    }})
+    .catch(function(err) {{
+      _stFetching = false;
+      if (btn) {{ btn.disabled = false; btn.innerHTML = '&#8635; Refresh'; }}
+      document.getElementById('stContent').innerHTML =
         '<div class="st-error">Request failed: ' + escHtml(String(err)) + '</div>';
     }});
 }}
 
-function openDrawer() {{
-  document.getElementById('stDrawer').classList.add('open');
-}}
-function closeDrawer() {{
-  document.getElementById('stDrawer').classList.remove('open');
-}}
-
-function escHtml(s) {{
-  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-}}
-
-// Lightweight markdown → HTML for SeaTalk summary output.
-// Handles: ### headers, **bold**, - bullets, [ ] checkboxes, blank lines.
+// ── SeaTalk markdown renderer ──────────────────────────────────────────────────
 function stMd(md) {{
   var lines = md.split('\\n');
   var html = '';
   var inUl = false;
-
-  function closeUl() {{
-    if (inUl) {{ html += '</ul>'; inUl = false; }}
-  }}
-
+  function closeUl() {{ if (inUl) {{ html += '</ul>'; inUl = false; }} }}
   for (var i = 0; i < lines.length; i++) {{
     var line = lines[i];
-
-    // Headers
-    if (line.startsWith('### ')) {{
-      closeUl();
-      html += '<h3>' + inlineMd(line.slice(4)) + '</h3>';
-      continue;
-    }}
-    if (line.startsWith('## ')) {{
-      closeUl();
-      html += '<h3 style="font-size:.97rem;color:#172B4D;margin:1.1rem 0 .3rem">' + inlineMd(line.slice(3)) + '</h3>';
-      continue;
-    }}
-    if (line.startsWith('# ')) {{
-      closeUl();
-      html += '<h3 style="font-size:1rem;color:#1a1a2e;margin:1.1rem 0 .3rem">' + inlineMd(line.slice(2)) + '</h3>';
-      continue;
-    }}
-
-    // Bullets
-    var bulletMatch = line.match(/^[-*]\\s+(.*)/);
-    if (bulletMatch) {{
+    if (line.startsWith('### ')) {{ closeUl(); html += '<h3>' + inlineMd(line.slice(4)) + '</h3>'; continue; }}
+    if (line.startsWith('## '))  {{ closeUl(); html += '<h3 style="font-size:.97rem;color:#172B4D;margin:1.1rem 0 .3rem">' + inlineMd(line.slice(3)) + '</h3>'; continue; }}
+    if (line.startsWith('# '))   {{ closeUl(); html += '<h3 style="font-size:1rem;color:#1a1a2e;margin:1.1rem 0 .3rem">' + inlineMd(line.slice(2)) + '</h3>'; continue; }}
+    var bm = line.match(/^[-*]\s+(.*)/);
+    if (bm) {{
       if (!inUl) {{ html += '<ul>'; inUl = true; }}
-      // Checkbox
-      var cbText = bulletMatch[1].replace(/^\\[ \\]\\s*/, function() {{
-        return '<input type="checkbox" disabled> ';
-      }}).replace(/^\\[x\\]\\s*/i, function() {{
-        return '<input type="checkbox" checked disabled> ';
-      }});
+      var cbText = bm[1]
+        .replace(/^\[ \]\s*/, function() {{ return '<input type="checkbox" disabled> '; }})
+        .replace(/^\[x\]\s*/i, function() {{ return '<input type="checkbox" checked disabled> '; }});
       html += '<li>' + inlineMd(cbText) + '</li>';
       continue;
     }}
-
-    // Blank line
-    if (line.trim() === '') {{
-      closeUl();
-      html += '<br>';
-      continue;
-    }}
-
-    // P0/P1/P2 standalone section headers  e.g. **P0 (act today)**
-    var pSect = line.match(/^\\*\\*(P([012])[^*]*)\\*\\*\\s*$/);
-    if (pSect) {{
-      closeUl();
-      html += '<div class="st-section"><span class="p' + pSect[2] + '-badge" style="font-size:.75rem;padding:3px 10px">' + pSect[1] + '</span></div>';
-      continue;
-    }}
-
-    // Paragraph
+    if (line.trim() === '') {{ closeUl(); html += '<br>'; continue; }}
+    var pSect = line.match(/^\*\*(P([012])[^*]*)\*\*\s*$/);
+    if (pSect) {{ closeUl(); html += '<div class="st-section"><span class="p' + pSect[2] + '-badge" style="font-size:.75rem;padding:3px 10px">' + pSect[1] + '</span></div>'; continue; }}
     closeUl();
     html += '<p>' + inlineMd(line) + '</p>';
   }}
@@ -735,64 +708,54 @@ function stMd(md) {{
 }}
 
 function inlineMd(s) {{
-  // Step 1: escape HTML special chars FIRST so user content never injects markup
-  s = s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-
-  // Step 2: source label pills  [Group: ...] and [DM: ...]
-  var friends = ['kel jin', 'han cheng'];
-  s = s.replace(/\\[Group:\\s*([^\\]]+)\\]/g, function(m, n) {{
+  s = s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  var friends = ['kel jin','han cheng'];
+  s = s.replace(/\[Group:\s*([^\]]+)\]/g, function(m,n) {{
     return '<span class="st-src st-src-group">&#128101; ' + n.trim() + '</span>';
   }});
-  s = s.replace(/\\[DM:\\s*([^\\]]+)\\]/g, function(m, n) {{
+  s = s.replace(/\[DM:\s*([^\]]+)\]/g, function(m,n) {{
     n = n.trim();
     var isFriend = friends.some(function(f) {{ return n.toLowerCase().indexOf(f) !== -1; }});
-    var fb = isFriend ? ' <span class="st-friend">Friend :)</span>' : '';
-    return '<span class="st-src st-src-dm">&#128172; ' + n + '</span>' + fb;
+    return '<span class="st-src st-src-dm">&#128172; ' + n + '</span>'
+      + (isFriend ? ' <span class="st-friend">Friend :)</span>' : '');
   }});
-
-  // Step 3: bold — highlight VIP names in orange
-  var vips = ['jianghong', 'hoi', 'fengc', 'feng c'];
-  s = s.replace(/\\*\\*(.+?)\\*\\*/g, function(m, t) {{
+  var vips = ['jianghong','hoi','fengc','feng c'];
+  s = s.replace(/\*\*(.+?)\*\*/g, function(m,t) {{
     var isVip = vips.some(function(v) {{ return t.toLowerCase().indexOf(v) !== -1; }});
-    return isVip
-      ? '<strong class="st-vip">' + t + '</strong>'
-      : '<strong>' + t + '</strong>';
+    return isVip ? '<strong class="st-vip">' + t + '</strong>' : '<strong>' + t + '</strong>';
   }});
-
-  // Step 4: inline code
   s = s.replace(/`([^`]+)`/g, '<code>$1</code>');
-
-  // Step 5: P0/P1/P2 inline badges
   s = s.replace(/<strong>P0<\/strong>/g, '<span class="p0-badge">P0</span>');
   s = s.replace(/<strong>P1<\/strong>/g, '<span class="p1-badge">P1</span>');
   s = s.replace(/<strong>P2<\/strong>/g, '<span class="p2-badge">P2</span>');
-
-  // Step 6: Action label styling
   s = s.replace(/<strong>Action:<\/strong>/g, '<span class="st-action">Action:</span>');
-
   return s;
 }}
 
 function tagPriorities(root) {{
   root.querySelectorAll('li').forEach(function(li) {{
     var t = li.textContent;
-    if (/^\\s*P0[^a-z0-9]/i.test(t)) li.classList.add('p0-item');
-    else if (/^\\s*P1[^a-z0-9]/i.test(t)) li.classList.add('p1-item');
-    else if (/^\\s*P2[^a-z0-9]/i.test(t)) li.classList.add('p2-item');
+    if (/^\s*P0[^a-z0-9]/i.test(t)) li.classList.add('p0-item');
+    else if (/^\s*P1[^a-z0-9]/i.test(t)) li.classList.add('p1-item');
+    else if (/^\s*P2[^a-z0-9]/i.test(t)) li.classList.add('p2-item');
   }});
 }}
 
-// ── Run brief ────────────────────────────────────────────────────────────────
+// ── Run brief ──────────────────────────────────────────────────────────────────
 {run_brief_fn}
 
-// ── P0/P1/P2 badge tagging on main briefing ──────────────────────────────────
+// ── Briefing tab init ──────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', function() {{
+
+  // P0/P1/P2 badges on briefing body
   document.querySelectorAll('.card li').forEach(function(li) {{
     var t = li.textContent;
-    if (/^\\s*P0[^a-z0-9]/i.test(t)) li.classList.add('p0-item');
-    else if (/^\\s*P1[^a-z0-9]/i.test(t)) li.classList.add('p1-item');
-    else if (/^\\s*P2[^a-z0-9]/i.test(t)) li.classList.add('p2-item');
+    if (/^\s*P0[^a-z0-9]/i.test(t)) li.classList.add('p0-item');
+    else if (/^\s*P1[^a-z0-9]/i.test(t)) li.classList.add('p1-item');
+    else if (/^\s*P2[^a-z0-9]/i.test(t)) li.classList.add('p2-item');
   }});
+
+  // Delta/What-Changed highlight
   document.querySelectorAll('h2,h3').forEach(function(h) {{
     if (h.textContent.includes('What Changed') || h.textContent.includes('\U0001F504')) {{
       h.classList.add('delta-header');
@@ -804,38 +767,51 @@ document.addEventListener('DOMContentLoaded', function() {{
     }}
   }});
 
-  // ── Mark past meetings ────────────────────────────────────────────────────
-  var nowUtc = new Date();
-  var nowSgt = new Date(nowUtc.getTime() + 8 * 60 * 60 * 1000);
-  var briefDate = {json.dumps(date_str)};
+  // Past-meeting strikethrough
+  var nowSgt = new Date(Date.now() + 8 * 3600000);
   var todayYMD = nowSgt.toISOString().slice(0,10);
-  var nowMinsSinceMidnight = nowSgt.getUTCHours() * 60 + nowSgt.getUTCMinutes();
+  var nowMins = nowSgt.getUTCHours() * 60 + nowSgt.getUTCMinutes();
 
-  if (briefDate < todayYMD) {{
-    // Brief is from a previous day — show stale banner, mark ALL meeting items past
+  if (_PAGE_DATE < todayYMD) {{
     var banner = document.getElementById('staleBanner');
     if (banner) banner.style.display = 'flex';
-    // Mark any li or td that looks like a meeting/action item
-    var meetingRe = /\\b(\\d{{1,2}}):\\d{{2}}|\\b(attend|review|prep|present|join|check|sync|meeting|brief)\\b/i;
-    document.querySelectorAll('.card li, .card td').forEach(function(el) {{
-      if (meetingRe.test(el.textContent)) el.classList.add('past-item');
+    var meetRe = /\b(\d{{1,2}}):\d{{2}}|\b(attend|review|prep|present|join|check|sync|meeting|brief)\b/i;
+    document.querySelectorAll('.card li,.card td').forEach(function(el) {{
+      if (meetRe.test(el.textContent)) el.classList.add('past-item');
     }});
-  }} else if (briefDate === todayYMD) {{
-    // Today's brief — strike items whose time has passed
-    // Handles 24h (14:30), 12h (2:30pm / 2:30 PM), and SGT suffix
-    var timeRe = /\\b(\\d{{1,2}}):(\\d{{2}})\\s*(am|pm|AM|PM)?(?:\\s*SGT)?\\b/;
-    document.querySelectorAll('.card li, .card td').forEach(function(el) {{
+  }} else if (_PAGE_DATE === todayYMD) {{
+    var timeRe = /\b(\d{{1,2}}):(\d{{2}})\s*(am|pm|AM|PM)?(?:\s*SGT)?\b/;
+    document.querySelectorAll('.card li,.card td').forEach(function(el) {{
       var m = el.textContent.match(timeRe);
       if (!m) return;
-      var h = parseInt(m[1], 10), mins = parseInt(m[2], 10);
+      var h = parseInt(m[1],10), mins = parseInt(m[2],10);
       var ampm = (m[3] || '').toLowerCase();
       if (ampm === 'pm' && h !== 12) h += 12;
       if (ampm === 'am' && h === 12) h = 0;
-      // Treat bare small hours (1–8) with no am/pm as PM (work hours context)
       if (!ampm && h >= 1 && h <= 8) h += 12;
-      var itemMins = h * 60 + mins;
-      if (itemMins < nowMinsSinceMidnight) el.classList.add('past-item');
+      if (h * 60 + mins < nowMins) el.classList.add('past-item');
     }});
+  }}
+
+  // Restore tab from URL hash
+  var hash = (window.location.hash || '').replace('#','');
+  if (hash === 'actions' || hash === 'seatalk') {{
+    switchTab(hash);
+  }} else {{
+    // Pre-fetch action items silently to populate badge even while on Briefing tab
+    fetch('/api/action_items')
+      .then(function(r) {{ return r.json(); }})
+      .then(function(items) {{
+        var urgent = items.filter(function(i) {{
+          return !i.done && _aiColor(i) === '🔴';
+        }}).length;
+        if (urgent > 0) {{
+          var badge = document.getElementById('actBadge');
+          badge.textContent = String(urgent);
+          badge.style.display = '';
+        }}
+      }})
+      .catch(function() {{}});
   }}
 }});
 </script>
@@ -845,15 +821,18 @@ document.addEventListener('DOMContentLoaded', function() {{
 
 def _not_found(date_str: str) -> str:
     turl = _trigger_url()
-    cta = f"""
-    <button class="run-btn" onclick="this.disabled=true;this.textContent='Running\u2026';window.location.href='{turl}'">
+    cta = (
+        f"""<button class="run-btn" onclick="this.disabled=true;this.textContent='Running…';window.location.href='{turl}'">
       &#9654;&nbsp; Generate Brief Now
-    </button>""" if turl else "<p class='hint'>Check that the cron ran successfully.</p>"
+    </button>"""
+        if turl
+        else "<p class='hint'>Check that the cron ran successfully.</p>"
+    )
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>No brief \u2014 {date_str}</title>
+<title>No brief — {date_str}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -871,7 +850,7 @@ def _not_found(date_str: str) -> str:
   .run-btn{{
     background:var(--primary);color:#fff;border:none;border-radius:8px;
     padding:12px 28px;font-size:.95rem;font-weight:600;cursor:pointer;
-    transition:opacity .15s;letter-spacing:.2px;
+    transition:opacity .15s;font-family:inherit;
   }}
   .run-btn:hover{{opacity:.85}}
   .run-btn:disabled{{opacity:.45;cursor:default}}
@@ -881,7 +860,7 @@ def _not_found(date_str: str) -> str:
 <div class="box">
   <div class="icon">&#9889;</div>
   <h2>No brief yet for {date_str}</h2>
-  <p>Your daily briefing will be ready at 8:00 AM SGT.<br>Briefings are kept for 7 days — check back soon!</p>
+  <p>Your daily briefing will be ready at 8:00 AM SGT.<br>Briefings are kept for 7 days.</p>
   {cta}
 </div>
 </body>
@@ -890,7 +869,7 @@ def _not_found(date_str: str) -> str:
 
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
-        # ── Session check ─────────────────────────────────────────────────
+        # ── Session check ──────────────────────────────────────────────────────
         cookie_header = self.headers.get("Cookie", "")
         cookies = parse_cookies(cookie_header)
         session_email = verify_cookie(cookies.get(COOKIE_NAME, ""))
@@ -901,7 +880,6 @@ class handler(BaseHTTPRequestHandler):
             self.send_header("Content-Length", "0")
             self.end_headers()
             return
-        # ── End session check ─────────────────────────────────────────────
 
         parsed = urlparse(self.path)
         params = parse_qs(parsed.query)
