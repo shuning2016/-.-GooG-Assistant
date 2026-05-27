@@ -29,29 +29,36 @@ DevTools Protocol (CDP). There is no public API.
 | 15:00 SGT summary | last 3 h (12:00–15:00) | `seatalk_summary.py --hours 3` |
 | 19:00 SGT summary | last 4 h (15:00–19:00) | `seatalk_summary.py --hours 4` |
 
+## Scanning scope — which conversations to read
+
+**Only read the following conversations.** Skip all others entirely — do not even open them.
+
+1. **Direct messages (DMs)** — any private 1:1 conversation where the other party has sent Shuning a message within the time window. Read all DMs regardless of sender.
+
+2. **Groups where Shuning is @-mentioned** — only include a group if it contains at least one message in the time window that explicitly @-mentions Shuning (`@shuning.wang` or `@Shuning`). Use unread/@-mention indicators from the Redux store rather than reading every group in full.
+
+3. **Groups whose name contains a key domain word AND has a VIP member** — include a group if its name contains any of: `Swarm`, `OSP`, `SIP`, `FP&A`, `Budget`, `BPM` — AND at least one of the VIPs (jianghong.liu, hoi, fengc) is a member of the group.
+
+**All other groups: skip.** Do not read, summarise, or mention them in any output.
+
+---
+
 ## SeaTalk message triage rules
 
-Apply these rules when classifying SeaTalk messages. They mirror the Gmail triage rubric.
+Apply these rules to messages within the scanned conversations above.
 
 ### P0 — Act today
 A SeaTalk message is P0 when **any** of these are true:
-1. It is a **direct (private) message from a VIP**: jianghong.liu, hoi, fengc — regardless of
-   content
-2. It **@mentions Shuning** (`@shuning.wang` / `@Shuning`) in any group
-3. Its **content** is about a key domain: Swarm, OSP, SIP, FP&A, Budget, BPM
-4. It is **from a group whose name contains a key domain word** — e.g. a group called "Swarm",
-   "BPM Leads", "SIP Core Leads", "OSP team", "FP&A". Every message in that group is P0
-   regardless of whether the content explicitly mentions the domain keyword.
-5. It contains a **direct ask, deadline, escalation, or blocker** directed at Shuning or his area
-6. It is a **thread reply in a thread Shuning originally started** (he is the OP)
+1. It is a **DM from a VIP** (jianghong.liu, hoi, fengc) — regardless of content
+2. It **@mentions Shuning** in a group
+3. It is from a **key-domain group** (group name contains Swarm/OSP/SIP/FP&A/Budget/BPM)
+4. It contains a **direct ask, deadline, escalation, or blocker** directed at Shuning
+5. It is a **thread reply in a thread Shuning originally started** (he is the OP)
 
 ### P1 — Handle within 48 h
 A SeaTalk message is P1 when **any** of these are true (and not already P0):
-- Direct private message from a non-VIP colleague
-- Reply to a thread where Shuning **previously posted** (but he is not the original poster)
-- Message about a meeting, deadline, deliverable, approval, or contract that touches Shuning's
-  work
-- Group message in a channel with < 20 members where Shuning's input is implied
+- DM from a non-VIP colleague
+- Reply to a thread where Shuning **previously posted** (but is not the OP)
 
 ### P2 — Track but not urgent
 A SeaTalk message is P2 when **all** of these are true:
@@ -85,12 +92,16 @@ Suppress entirely unless they contain a new risk, direct ask, or deadline:
 - System join/leave notifications
 
 ## Groups and contacts to monitor
-Configure watched groups and admin IDs in `~/.use-seatalk/seatalk-listener.conf`:
+
+The scanning scope above is the authoritative filter. For `seatalk-listener.conf`, configure watched groups to match the three scope rules:
+
 ```
+# Key-domain groups with VIPs — add group IDs here as they are identified
 SEATALK_WATCH_GROUPS=group-id-1,group-id-2,...
 SEATALK_ADMIN_IDS=shuning.wang@shopee.com,...
 ```
-Leave blank to monitor all groups/buddies visible in the running client.
+
+If `SEATALK_WATCH_GROUPS` is blank, the scripts will read all groups — apply the scanning scope filter in the summary/snapshot scripts to discard out-of-scope groups before analysis. Do **not** leave this blank in production; populate it with the key-domain group IDs once identified.
 
 ## Formatting rules (applies to all SeaTalk output)
 
