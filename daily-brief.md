@@ -18,6 +18,7 @@ Optional user arguments:
 - Never archive, delete, move, label, snooze, or mark messages.
 - Never fabricate access, findings, or dates.
 - If the Google mail or calendar tools are not available, say so clearly and stop.
+- **Never run any `gws drive` command** (no `drive files list`, no `drive files export`, no `drive files get`). Drive scanning is fully disabled. Do not include a "Google Drive Updates" section in any briefing output.
 
 ## Required scope
 - Gmail scope: work Gmail only
@@ -137,8 +138,10 @@ Same as Step 2. A meeting is domain-relevant when its title or description relat
 - Do not flag meeting overlaps or transit buffers; Shuning handles scheduling herself
 - Report all meetings in order: P0 first, then P1, then P2.
 
-## Step 5: fetch and analyze meeting pre-reads
-For each important meeting identified in Step 4, search the last 24 hours of email for pre-read materials — typically emails with attachments or Google Drive links sent ahead of the meeting.
+## Step 4: fetch and analyze meeting pre-reads
+For each important meeting identified in Step 3, search the last 24 hours of email for pre-read materials — typically emails with attachments sent ahead of the meeting.
+
+> **⛔ Drive scanning is disabled.** Do NOT run `gws drive files export`, `gws drive files list`, or any other `gws drive` command at any point. If an email body contains a Google Drive link, note the link URL only — do not access it.
 
 ### Search for pre-read emails
 For each important meeting, extract 2–3 significant words from the meeting title (strip filler words like "sync", "catch-up", "weekly", "check-in") and run:
@@ -151,7 +154,7 @@ gws gmail users messages list --params '{"userId": "me", "q": "has:attachment ne
 ```
 
 ### Get attachment metadata
-For each matching email, fetch the full message to identify attachments and any Drive links in the body:
+For each matching email, fetch the full message to identify attachments:
 ```bash
 gws gmail users messages get --params '{"userId": "me", "id": "MESSAGE_ID", "format": "full"}'
 ```
@@ -159,18 +162,12 @@ From the response, extract:
 - `payload.parts[*].filename` — attachment name
 - `payload.parts[*].mimeType` — file type
 - `payload.parts[*].body.attachmentId` — download ID
-- Any `drive.google.com` URLs in the plain-text body
+
+If the email body contains a `drive.google.com` link, note the link text and sender but **do not access the Drive URL**.
 
 ### Download and read attachment content
 
-**Option A — Google Drive file linked in the email body** (Docs, Slides, Sheets):
-Extract the `fileId` from the URL and export as plain text:
-```bash
-gws drive files export --params '{"fileId": "FILE_ID", "mimeType": "text/plain"}' --output /tmp/preread_NAME.txt
-```
-Then read the exported file.
-
-**Option B — Binary attachment** (PDF, PPTX, DOCX, etc.):
+**Only Option — Binary email attachment** (PDF, PPTX, DOCX, etc.):
 Download the raw attachment:
 ```bash
 gws gmail users messages attachments get --params '{"userId": "me", "messageId": "MESSAGE_ID", "id": "ATTACHMENT_ID"}'
@@ -264,7 +261,9 @@ Use checkboxes grouped by priority:
 
 Each item should be phrased as an action, not just an observation.
 
-### 2b) Open Action Items
+### 2b) Open Action Items ⚠️ MANDATORY — always render this widget, never use a flat list
+
+> **Do NOT include a "Google Drive Updates" section anywhere in the briefing. Drive scanning is disabled.**
 
 Load `.claude/state/open-action-items.json`. Display every item where `done: false` as a color-coded table, sorted by urgency (most urgent first).
 
