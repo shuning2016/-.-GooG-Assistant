@@ -107,6 +107,37 @@ def select_best_pdf(pdf_attachments: list[dict]) -> dict | None:
 
 # ─── Question parser ───────────────────────────────────────────────────────────
 
+def _parse_answers(raw_text: str) -> dict[str, str]:
+    """
+    Parse the ```answers code block into {question_text_lower: answer_text}.
+
+    Expected block format:
+        ```answers
+        Slide N
+        Q: question text
+        A: answer text
+
+        Others
+        Q: question text
+        A: answer text
+        ```
+    """
+    answers: dict[str, str] = {}
+    ans_match = re.search(r"```answers\s*\n(.*?)```", raw_text, re.DOTALL)
+    if not ans_match:
+        return answers
+
+    current_q: str | None = None
+    for line in ans_match.group(1).split("\n"):
+        stripped = line.strip()
+        if re.match(r"^Q:", stripped, re.IGNORECASE):
+            current_q = stripped[2:].strip()
+        elif re.match(r"^A:", stripped, re.IGNORECASE) and current_q is not None:
+            answers[current_q.lower()] = stripped[2:].strip()
+            current_q = None
+    return answers
+
+
 def _parse_questions(raw_text: str, pdf_name: str, today_str: str) -> list[dict]:
     """
     Parse Claude's Ian Ho–style output into structured question items.
@@ -126,12 +157,16 @@ def _parse_questions(raw_text: str, pdf_name: str, today_str: str) -> list[dict]
         - question 4
         - question 5
 
+    Proposed answers are parsed from a separate ```answers block and attached
+    to each item as an "answer" field.
+
     Each question becomes an item:
         {
             "id": "...",
             "pdf_name": "...",
             "question": "...",
             "slide_ref": "Slide N" or "Others",
+            "answer": "...",          # may be "" if not generated
             "type": "generated",
             "date": "YYYY-MM-DD",
             "created_at": "..."
@@ -139,8 +174,9 @@ def _parse_questions(raw_text: str, pdf_name: str, today_str: str) -> list[dict]
     """
     items = []
 
-    # Extract just the Ian-format block from inside the ``` code fence
-    code_fence_match = re.search(r"```\s*\n(.*?)```", raw_text, re.DOTALL)
+    # Extract just the Ian-format block from inside the first plain ``` code fence
+    # (avoid matching the ```answers block)
+    code_fence_match = re.search(r"```(?!answers)\s*\n(.*?)```", raw_text, re.DOTALL)
     if code_fence_match:
         ian_block = code_fence_match.group(1)
     else:
@@ -160,8 +196,7 @@ def _parse_questions(raw_text: str, pdf_name: str, today_str: str) -> list[dict]
     if summary_match:
         deck_summary = summary_match.group(1).strip()
 
-    # Parse slide sections
-    # Sections start with "Slide N" or "Others"
+    # Parse slide sections — sections start with "Slide N" or "Others"
     current_slide = "General"
     for line in ian_block.split("\n"):
         line_stripped = line.strip()
@@ -184,6 +219,7 @@ def _parse_questions(raw_text: str, pdf_name: str, today_str: str) -> list[dict]
                     "pdf_name": pdf_name,
                     "question": question_text,
                     "slide_ref": current_slide,
+                    "answer": "",
                     "type": "generated",
                     "date": today_str,
                     "created_at": datetime.now(SGT).isoformat(),
@@ -202,18 +238,26 @@ def _parse_questions(raw_text: str, pdf_name: str, today_str: str) -> list[dict]
                         "pdf_name": pdf_name,
                         "question": question_text,
                         "slide_ref": "General",
+                        "answer": "",
                         "type": "generated",
                         "date": today_str,
                         "created_at": datetime.now(SGT).isoformat(),
                     })
+
+    # Attach proposed answers (matched by lowercased question text)
+    answer_map = _parse_answers(raw_text)
+    for item in items:
+        q_lower = item["question"].lower()
+        item["answer"] = answer_map.get(q_lower, "")
 
     # Add deck summary as the first item if we parsed any questions
     if items and deck_summary:
         summary_item = {
             "id": f"qa-summary-{int(time.time() * 1000)}",
             "pdf_name": pdf_name,
-            "question": f"[DECK SUMMARY] {deck_summary[:400]}",
+            "question": f"[DECK SUMMARY] {deck_summary}",
             "slide_ref": "Summary",
+            "answer": "",
             "type": "generated",
             "date": today_str,
             "created_at": datetime.now(SGT).isoformat(),
@@ -250,8 +294,20 @@ def generate_pdf_qa(
                 "Follow ALL instructions in the system prompt: "
                 "STEP 1 (data extraction), STEP 2 (slide reading pattern), "
                 "cross-slide analysis, question cascading, and the Others section.\n\n"
-                "Output the Deck Summary, then the Predicted Questions inside a ``` code block, "
-                "then Confidence Notes."
+                "Output in this exact order:\n"
+                "1. ### Deck Summary — key takeaways, red flags, missing items\n"
+                "2. ### Predicted Questions from Ian Ho — inside a ``` code block\n"
+                "3. ### Confidence Notes\n"
+                "4. ### Proposed Answers — concise 1–2 sentence data-driven answers for EVERY "
+                "question above, using strictly the deck content. Use a ```answers code block:\n\n"
+                "```answers\n"
+                "Slide N\n"
+                "Q: [exact question text]\n"
+                "A: [answer from deck data]\n\n"
+                "Others\n"
+                "Q: [exact question text]\n"
+                "A: [answer from deck data]\n"
+                "```"
             ),
         },
         {
@@ -266,7 +322,7 @@ def generate_pdf_qa(
 
     msg = client.messages.create(
         model="claude-sonnet-4-6",
-        max_tokens=2048,
+        max_tokens=4096,
         system=system_prompt_text,
         messages=[{"role": "user", "content": user_content}],
     )

@@ -290,7 +290,6 @@ def _render_html(briefing_md: str, date_str: str) -> str:
   .delta-body{{background:#fff0ec;border-radius:8px;padding:10px 14px;margin:.4rem 0}}
 
   /* ── Pre-reads tab ── */
-  .pr-pdf-block{{margin-bottom:28px}}
   .pr-pdf-title{{font-size:.95rem;font-weight:700;color:var(--navy);margin-bottom:12px;display:flex;align-items:center;gap:8px;padding-bottom:8px;border-bottom:2px solid var(--border)}}
   .pr-pdf-icon{{font-size:1.1rem}}
   .pr-q-row{{display:flex;align-items:flex-start;gap:8px;padding:9px 0;border-bottom:1px solid #f0f1f5}}
@@ -307,6 +306,25 @@ def _render_html(briefing_md: str, date_str: str) -> str:
   .pr-add-row{{display:flex;gap:8px;padding-top:12px;margin-top:8px;border-top:1px dashed var(--border);flex-wrap:wrap}}
   .pr-add-input{{flex:1;min-width:200px;border:1px solid #c7d0e8;border-radius:6px;padding:7px 10px;font-size:.88rem;font-family:inherit}}
   .pr-add-input:focus{{outline:2px solid var(--teal);border-color:var(--teal)}}
+  /* PDF sub-tabs (when >1 PDF) */
+  .pr-subtabs{{display:flex;gap:6px;margin-bottom:20px;flex-wrap:wrap;border-bottom:2px solid var(--border);padding-bottom:0}}
+  .pr-subtab{{border:1px solid var(--border);border-bottom:none;background:var(--surface);border-radius:8px 8px 0 0;padding:8px 16px;font-size:.84rem;font-weight:600;cursor:pointer;color:var(--muted);font-family:inherit;transition:all .15s;white-space:nowrap;margin-bottom:-2px}}
+  .pr-subtab.active{{background:var(--navy);color:#fff;border-color:var(--navy)}}
+  .pr-subtab:hover:not(.active){{border-color:var(--teal);color:var(--teal);background:#f0f9ff}}
+  /* Questions / Answers view toggle */
+  .pr-view-toggle{{display:flex;margin-bottom:16px;border:1px solid var(--border);border-radius:7px;overflow:hidden;width:fit-content}}
+  .pr-view-btn{{border:none;background:#f8f9fa;padding:7px 20px;font-size:.82rem;font-weight:600;cursor:pointer;font-family:inherit;color:var(--muted);transition:all .15s}}
+  .pr-view-btn.active{{background:var(--teal);color:#fff}}
+  .pr-view-btn:hover:not(.active){{background:#e8f4fd;color:var(--teal)}}
+  /* Answers view */
+  .pr-ans-slide-hdr{{font-size:.78rem;font-weight:700;color:var(--teal);text-transform:uppercase;letter-spacing:.4px;margin:18px 0 8px;padding-bottom:5px;border-bottom:1px solid #bae6fd}}
+  .pr-ans-slide-hdr:first-child{{margin-top:0}}
+  .pr-ans-slide-hdr.pr-ans-others-hdr{{color:#7c3aed;border-color:#ddd6fe}}
+  .pr-ans-item{{margin-bottom:12px;padding:11px 14px;background:#f8fafe;border-radius:8px;border-left:3px solid var(--teal)}}
+  .pr-ans-item.pr-ans-others{{border-left-color:#7c3aed;background:#faf8ff}}
+  .pr-ans-q{{font-size:.88rem;font-weight:600;color:var(--navy);margin-bottom:5px}}
+  .pr-ans-a{{font-size:.87rem;color:#374151;line-height:1.6}}
+  .pr-ans-empty{{font-size:.83rem;color:var(--muted);font-style:italic}}
 
   /* ── Reason modal ── */
   .modal-overlay{{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:500;display:flex;align-items:center;justify-content:center;padding:20px}}
@@ -844,6 +862,30 @@ function _fetchPrereads() {{
     }});
 }}
 
+function _safePdfId(n) {{
+  return n.replace(/[^a-zA-Z0-9]/g, '-').slice(0, 40);
+}}
+
+function switchPdfTab(sid) {{
+  document.querySelectorAll('.pr-subtab').forEach(function(b) {{
+    b.classList.toggle('active', b.id === 'pr-subtab-' + sid);
+  }});
+  document.querySelectorAll('.pr-pdf-panel').forEach(function(p) {{
+    p.hidden = (p.id !== 'pr-panel-' + sid);
+  }});
+}}
+
+function switchPrView(sid, view) {{
+  var qBtn = document.getElementById('pr-vbtn-q-' + sid);
+  var aBtn = document.getElementById('pr-vbtn-a-' + sid);
+  var qView = document.getElementById('pr-view-q-' + sid);
+  var aView = document.getElementById('pr-view-a-' + sid);
+  if (!qBtn || !aBtn || !qView || !aView) return;
+  var toQ = (view === 'q');
+  qBtn.classList.toggle('active', toQ); aBtn.classList.toggle('active', !toQ);
+  qView.hidden = !toQ; aView.hidden = toQ;
+}}
+
 function _renderPrereads(items) {{
   // Count non-summary questions for badge
   var qCount = items.filter(function(i) {{ return i.slide_ref !== 'Summary'; }}).length;
@@ -867,44 +909,122 @@ function _renderPrereads(items) {{
     groups[name].push(item);
   }});
 
+  var multiPdf = order.length > 1;
   var html = '';
-  order.forEach(function(pdfName) {{
-    var qs = groups[pdfName];
-    var safePdfId = pdfName.replace(/[^a-zA-Z0-9]/g, '-').slice(0, 40);
-    html += '<div class="pr-pdf-block">'
-      + '<div class="pr-pdf-title"><span class="pr-pdf-icon">&#128196;</span>' + escHtml(pdfName) + '</div>';
 
-    qs.forEach(function(item) {{
-      var isSummary = (item.slide_ref === 'Summary');
+  // ── PDF sub-tab nav (only when >1 PDF) ───────────────────────────────────────
+  if (multiPdf) {{
+    html += '<div class="pr-subtabs" id="prSubtabs">';
+    order.forEach(function(pdfName, i) {{
+      var sid = _safePdfId(pdfName);
+      var label = pdfName.replace(/^\[.*?\]\s*/, '').replace(/\.pdf$/i, '').slice(0, 45);
+      var qc = groups[pdfName].filter(function(x) {{ return x.slide_ref !== 'Summary'; }}).length;
+      html += '<button class="pr-subtab' + (i === 0 ? ' active' : '') + '"'
+        + ' id="pr-subtab-' + sid + '"'
+        + ' onclick="switchPdfTab(' + JSON.stringify(sid) + ')">'
+        + '&#128196; ' + escHtml(label)
+        + ' <span style="font-size:.72rem;opacity:.65;margin-left:4px">(' + qc + 'q)</span>'
+        + '</button>';
+    }});
+    html += '</div>';
+  }}
+
+  // ── One panel per PDF ─────────────────────────────────────────────────────────
+  order.forEach(function(pdfName, i) {{
+    var qs = groups[pdfName];
+    var sid = _safePdfId(pdfName);
+
+    html += '<div class="pr-pdf-panel" id="pr-panel-' + sid + '"'
+      + (i === 0 || !multiPdf ? '' : ' hidden') + '>';
+
+    // PDF title (only when single-PDF; multi-tab uses the tab button as title)
+    if (!multiPdf) {{
+      html += '<div class="pr-pdf-title"><span class="pr-pdf-icon">&#128196;</span>'
+        + escHtml(pdfName) + '</div>';
+    }}
+
+    // Summary row — shown above the toggle, always visible
+    var summaryItem = null;
+    qs.forEach(function(x) {{ if (x.slide_ref === 'Summary') summaryItem = x; }});
+    if (summaryItem) {{
+      html += '<div class="pr-q-row" id="pr-row-' + escHtml(summaryItem.id) + '"'
+        + ' style="background:#f3f4f6;border-radius:8px;padding:10px 14px;margin-bottom:16px;'
+        + 'border-bottom:none;align-items:flex-start">'
+        + '<span class="pr-slide-ref pr-summary">Summary</span>'
+        + '<span class="pr-q-text pr-is-summary" style="flex:1">' + escHtml(summaryItem.question || '') + '</span>'
+        + '<div class="pr-actions">'
+        + '<button class="pr-del-btn" data-id="' + escHtml(summaryItem.id) + '"'
+        +   ' data-pdf="' + escHtml(pdfName) + '" onclick="openDeleteModal(this)">&#10005;</button>'
+        + '</div></div>';
+    }}
+
+    // View toggle
+    html += '<div class="pr-view-toggle">'
+      + '<button class="pr-view-btn active" id="pr-vbtn-q-' + sid + '"'
+      +   ' onclick="switchPrView(' + JSON.stringify(sid) + ',\'q\')">&#128203; Questions</button>'
+      + '<button class="pr-view-btn" id="pr-vbtn-a-' + sid + '"'
+      +   ' onclick="switchPrView(' + JSON.stringify(sid) + ',\'a\')">&#128161; Proposed Answers</button>'
+      + '</div>';
+
+    var nonSummary = qs.filter(function(x) {{ return x.slide_ref !== 'Summary'; }});
+
+    // ── Questions view ────────────────────────────────────────────────────────
+    html += '<div id="pr-view-q-' + sid + '">';
+    nonSummary.forEach(function(item) {{
       var isOthers = (item.slide_ref === 'Others');
-      var refClass = isSummary ? 'pr-slide-ref pr-summary' : (isOthers ? 'pr-slide-ref pr-others' : 'pr-slide-ref');
-      var qClass = isSummary ? 'pr-q-text pr-is-summary' : 'pr-q-text';
+      var refClass = isOthers ? 'pr-slide-ref pr-others' : 'pr-slide-ref';
       html += '<div class="pr-q-row" id="pr-row-' + escHtml(item.id) + '">'
         + '<span class="' + refClass + '">' + escHtml(item.slide_ref || 'General') + '</span>'
-        + '<span class="' + qClass + '">' + escHtml(item.question || '') + '</span>'
+        + '<span class="pr-q-text">' + escHtml(item.question || '') + '</span>'
         + '<div class="pr-actions">'
-        + '<button class="pr-edit-btn"'
-        +   ' data-id="' + escHtml(item.id) + '"'
+        + '<button class="pr-edit-btn" data-id="' + escHtml(item.id) + '"'
         +   ' data-pdf="' + escHtml(pdfName) + '"'
         +   ' data-q="' + escHtml(item.question || '') + '"'
         +   ' onclick="openEditModal(this)">&#9998; Edit</button>'
-        + '<button class="pr-del-btn"'
-        +   ' data-id="' + escHtml(item.id) + '"'
-        +   ' data-pdf="' + escHtml(pdfName) + '"'
-        +   ' onclick="openDeleteModal(this)">&#10005; Delete</button>'
-        + '</div>'
-        + '</div>';
+        + '<button class="pr-del-btn" data-id="' + escHtml(item.id) + '"'
+        +   ' data-pdf="' + escHtml(pdfName) + '" onclick="openDeleteModal(this)">&#10005; Delete</button>'
+        + '</div></div>';
     }});
-
-    // Add question row
     html += '<div class="pr-add-row">'
-      + '<input type="text" id="pr-add-' + safePdfId + '"'
-      +   ' class="pr-add-input" data-pdf="' + escHtml(pdfName) + '"'
-      +   ' placeholder="Add a question for this deck…"'
+      + '<input type="text" id="pr-add-' + sid + '" class="pr-add-input"'
+      +   ' data-pdf="' + escHtml(pdfName) + '"'
+      +   ' placeholder="Add a question for this deck&#8230;"'
       +   ' onkeydown="if(event.key===\'Enter\'){{event.preventDefault();addQuestion(this.nextElementSibling);}}">'
       + '<button class="add-btn" onclick="addQuestion(this)">&#65291; Add</button>'
-      + '</div>'
       + '</div>';
+    html += '</div>'; // end questions view
+
+    // ── Proposed Answers view ─────────────────────────────────────────────────
+    html += '<div id="pr-view-a-' + sid + '" hidden>';
+    if (nonSummary.length === 0) {{
+      html += '<p class="pr-ans-empty">No questions generated yet.</p>';
+    }} else {{
+      // Group by slide_ref preserving order
+      var slideGroups = {{}};
+      var slideOrder = [];
+      nonSummary.forEach(function(item) {{
+        var sr = item.slide_ref || 'General';
+        if (!slideGroups[sr]) {{ slideGroups[sr] = []; slideOrder.push(sr); }}
+        slideGroups[sr].push(item);
+      }});
+      slideOrder.forEach(function(sr) {{
+        var isOthers = (sr === 'Others');
+        html += '<div class="pr-ans-slide-hdr' + (isOthers ? ' pr-ans-others-hdr' : '') + '">'
+          + escHtml(sr) + '</div>';
+        slideGroups[sr].forEach(function(item) {{
+          var ans = (item.answer || '').trim();
+          html += '<div class="pr-ans-item' + (isOthers ? ' pr-ans-others' : '') + '">'
+            + '<div class="pr-ans-q">Q: ' + escHtml(item.question || '') + '</div>'
+            + '<div class="pr-ans-a">'
+            + (ans ? escHtml(ans)
+                   : '<em class="pr-ans-empty">No answer generated — re-run the daily brief to populate.</em>')
+            + '</div></div>';
+        }});
+      }});
+    }}
+    html += '</div>'; // end answers view
+
+    html += '</div>'; // end pdf panel
   }});
 
   document.getElementById('prContent').innerHTML = html;
