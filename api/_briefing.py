@@ -6,8 +6,10 @@ imports between sibling api/ files, which are unreliable in Vercel's
 Python serverless runtime.
 """
 
+import base64
 import json
 import os
+import re
 import sys
 import smtplib
 from datetime import datetime, timedelta
@@ -65,6 +67,23 @@ def _is_key_domain(subject: str, snippet: str) -> bool:
     return any(term in text for term in _KEY_DOMAIN_TERMS)
 
 
+_PREREREAD_MARKERS = ("[pre-read]", "[pre read]", "[preread]", "pre-read:", "pre read:")
+
+
+def _is_prereread(subject: str) -> bool:
+    """Return True if this is a pre-meeting pre-read/agenda email (NOT a reply to one).
+
+    Reply emails (RE:/FWD: prefix) are NOT considered pre-reads — they may be
+    post-meeting recap emails sent in the same thread and can contain action items.
+    """
+    s = subject.strip()
+    # Replies and forwards are NOT pre-reads
+    if re.match(r"^(re:|fwd?:)\s*", s, re.IGNORECASE):
+        return False
+    s_lower = s.lower()
+    return any(s_lower.startswith(m) for m in _PREREREAD_MARKERS)
+
+
 def _extract_plain_body(payload: dict, max_chars: int = 3000) -> str:
     """Recursively extract plain-text body from a Gmail message payload."""
     import base64
@@ -96,6 +115,63 @@ def _extract_plain_body(payload: dict, max_chars: int = 3000) -> str:
     return ""
 
 
+_CLAUDE_IMAGE_TYPES = {"image/png", "image/jpeg", "image/gif", "image/webp"}
+
+
+def _extract_images(
+    payload: dict,
+    service,
+    msg_id: str,
+    max_images: int = 3,
+    max_bytes: int = 1_572_864,  # 1.5 MB per image
+) -> list[dict]:
+    """Download image attachments from a Gmail message payload.
+
+    Returns up to max_images dicts: {data, media_type, filename}.
+    Only Claude-supported image types (PNG, JPEG, GIF, WEBP).
+    Images larger than max_bytes are skipped.
+    """
+    results: list[dict] = []
+
+    def _walk(parts: list) -> None:
+        for part in parts:
+            if len(results) >= max_images:
+                return
+            mime = part.get("mimeType", "")
+            if mime in _CLAUDE_IMAGE_TYPES:
+                att_id = part.get("body", {}).get("attachmentId")
+                if att_id:
+                    try:
+                        att = (
+                            service.users()
+                            .messages()
+                            .attachments()
+                            .get(userId="me", messageId=msg_id, id=att_id)
+                            .execute()
+                        )
+                        raw_data = att.get("data", "")
+                        decoded = base64.urlsafe_b64decode(raw_data + "==")
+                        if len(decoded) > max_bytes:
+                            continue  # skip oversized images
+                        # Claude requires standard base64, not urlsafe
+                        data_b64 = base64.b64encode(decoded).decode("utf-8")
+                        results.append(
+                            {
+                                "data": data_b64,
+                                "media_type": mime,
+                                "filename": part.get("filename", "image"),
+                            }
+                        )
+                    except Exception:
+                        pass
+            sub = part.get("parts", [])
+            if sub:
+                _walk(sub)
+
+    _walk(payload.get("parts", []))
+    return results
+
+
 def fetch_gmail(service, since: datetime) -> list[dict]:
     """Return up to 40 message summaries since `since`.
 
@@ -121,16 +197,20 @@ def fetch_gmail(service, since: datetime) -> list[dict]:
         subject = h.get("Subject", "")
         snippet = meta.get("snippet", "")
 
+        is_prereread = _is_prereread(subject)
         body_text = ""
+        images: list[dict] = []
         if _is_key_domain(subject, snippet):
-            # Second pass: full body for key-domain emails
+            # Second pass: full body + image attachments for key-domain emails
             try:
                 full = service.users().messages().get(
                     userId="me",
                     id=m["id"],
                     format="full",
                 ).execute()
-                body_text = _extract_plain_body(full.get("payload", {}))
+                full_payload = full.get("payload", {})
+                body_text = _extract_plain_body(full_payload)
+                images = _extract_images(full_payload, service, m["id"])
             except Exception:
                 pass  # Fall back to snippet if full fetch fails
 
@@ -144,7 +224,9 @@ def fetch_gmail(service, since: datetime) -> list[dict]:
                 "subject": subject,
                 "date": h.get("Date", ""),
                 "snippet": snippet,
-                "body": body_text,  # full plain text for key-domain emails, "" otherwise
+                "is_prereread": is_prereread,
+                "body": body_text,
+                "images": images,  # image attachments for Claude Vision (key-domain only)
             }
         )
     return out
@@ -189,16 +271,58 @@ def fetch_calendar(service, now_sgt: datetime) -> list[dict]:
 
 
 
-def fetch_open_action_items(r: Redis) -> list[dict]:
-    """Read open action items from Redis. Returns empty list if none stored."""
+def _load_all_action_items(r: Redis) -> list[dict]:
+    """Read ALL action items from Redis (including done). Returns empty list if none."""
     try:
         raw = r.get("open-action-items")
         if not raw:
             return []
         data = json.loads(raw) if isinstance(raw, str) else raw
-        return [item for item in data if not item.get("done", False)]
+        return data if isinstance(data, list) else []
     except Exception:
         return []
+
+
+def fetch_open_action_items(r: Redis) -> list[dict]:
+    """Read open (not done) action items from Redis."""
+    return [item for item in _load_all_action_items(r) if not item.get("done", False)]
+
+
+_NEW_ITEMS_RE = re.compile(
+    r"---NEW_ACTION_ITEMS_START---\s*(.*?)\s*---NEW_ACTION_ITEMS_END---",
+    re.DOTALL,
+)
+
+
+def _parse_and_save_new_action_items(r: Redis, briefing_raw: str) -> str:
+    """Extract any NEW_ACTION_ITEMS block from the briefing, merge into Redis,
+    and return the briefing text with the block stripped out."""
+    match = _NEW_ITEMS_RE.search(briefing_raw)
+    if not match:
+        return briefing_raw
+
+    briefing_clean = _NEW_ITEMS_RE.sub("", briefing_raw).strip()
+
+    try:
+        new_items: list[dict] = json.loads(match.group(1))
+    except Exception:
+        return briefing_clean  # malformed JSON — strip block but don't crash
+
+    if not new_items:
+        return briefing_clean
+
+    all_items = _load_all_action_items(r)
+    existing_ids = {item.get("id") for item in all_items}
+    added = 0
+    for item in new_items:
+        if isinstance(item, dict) and item.get("id") and item["id"] not in existing_ids:
+            all_items.append(item)
+            added += 1
+
+    if added:
+        r.set("open-action-items", json.dumps(all_items), ex=30 * 24 * 3600)
+
+    return briefing_clean
 
 
 # ─── Claude ───────────────────────────────────────────────────────────────────
@@ -348,6 +472,56 @@ P1: DM from non-VIP; reply in a thread where Shuning posted; message about a dea
 P2: general FYI; no action required from Shuning.
 Suppress: bot alerts, automated reports, reaction-only messages, join/leave notifications.
 
+─── ACTION ITEM EXTRACTION FROM EMAILS AND IMAGES ───────────────────────────────────
+
+RULE 1 — Pre-read emails: SKIP
+  If `is_prereread: true` on an email, DO NOT extract action items from it.
+  Pre-read / agenda emails contain questions, topics, and discussion points that will be
+  answered in the meeting. Tracking them as action items creates noise.
+
+RULE 2 — Post-meeting emails: EXTRACT
+  Extract action items from recap / follow-up emails (`is_prereread: false`).
+  These are usually sent after the meeting, often as a reply in the pre-read thread
+  (subject may start with "RE:") or as a standalone recap email.
+  Post-meeting action item tables typically have columns like:
+    • Item / Action description
+    • PIC (Person in Charge)
+    • ETA / Due Date
+
+RULE 3 — Images (Claude Vision)
+  Images attached to emails are provided as vision inputs immediately after this prompt.
+  Each image is labelled with its source email, subject, and whether it is a pre-read.
+  • If the image shows an action item table (columns: Item, PIC, ETA) AND it is from a
+    post-meeting email (NOT pre-read), read each row and extract it as an action item.
+  • If the image is from a pre-read email, describe it briefly but do NOT extract action items.
+  • If the image is not an action item table (e.g. a chart, diagram, logo), just mention it.
+
+RULE 4 — New action items output block
+  If you find NEW action items not already present in the OPEN ACTION ITEMS data:
+  Append this exact block at the very end of your briefing output (after all other sections):
+
+---NEW_ACTION_ITEMS_START---
+[
+  {
+    "id": "kebab-slug-unique",
+    "source": "email subject or source description",
+    "source_type": "email",
+    "date_identified": "YYYY-MM-DD",
+    "action": "one-sentence description of what needs to be done",
+    "eta": "YYYY-MM-DD or null",
+    "urgency": "high | medium | low | null",
+    "done": false
+  }
+]
+---NEW_ACTION_ITEMS_END---
+
+  Rules for the JSON block:
+  • Only include genuinely NEW items not already in OPEN ACTION ITEMS.
+  • PIC must be Shuning or Shuning's team; skip items assigned to others entirely.
+    If ownership is unclear, include with urgency: null.
+  • Use today's SGT date for date_identified.
+  • If no new action items were found, omit the block entirely — do NOT output an empty block.
+
 ─────────────────────────────────────────────────────────────────────────────────────
 
 Use Singapore time (SGT) for all timestamps. Be concise — lead with the answer.\
@@ -403,11 +577,32 @@ def generate_briefing(
     today_events, tomorrow_events = _split_events_by_day(events, today)
     open_items = action_items or []
 
+    # Separate image attachments from the text payload so base64 data doesn't
+    # bloat the text prompt. Images are passed as Claude Vision content blocks.
+    all_images: list[dict] = []
+    emails_text: list[dict] = []
+    for email in emails:
+        imgs = email.get("images", [])
+        for img in imgs:
+            all_images.append(
+                {
+                    "from": email.get("from", ""),
+                    "subject": email.get("subject", ""),
+                    "is_prereread": email.get("is_prereread", False),
+                    **img,
+                }
+            )
+        # Strip images (and raw data) from the serialised email object
+        emails_text.append({k: v for k, v in email.items() if k != "images"})
+
+    # Cap total images to avoid oversized requests
+    all_images = all_images[:5]
+
     payload = (
         f"REVIEW WINDOW: {window}\n"
         f"TODAY: {today} (Asia/Singapore)\n\n"
-        f"=== GMAIL ({len(emails)} messages) ===\n"
-        f"{json.dumps(emails, indent=2, default=str)}\n\n"
+        f"=== GMAIL ({len(emails_text)} messages) ===\n"
+        f"{json.dumps(emails_text, indent=2, default=str)}\n\n"
         f"=== TODAY'S CALENDAR EVENTS ({today}, {len(today_events)} events) ===\n"
         f"{json.dumps(today_events, indent=2, default=str)}\n\n"
         f"=== TOMORROW'S CALENDAR EVENTS ({len(tomorrow_events)} events) ===\n"
@@ -418,6 +613,39 @@ def generate_briefing(
         f"{seatalk_section}"
     )
 
+    intro = f"Generate my daily briefing:\n\n{payload}"
+
+    # Build content: text first, then interleaved image label + image blocks
+    if all_images:
+        content: list[dict] = [{"type": "text", "text": intro}]
+        for img in all_images:
+            prereread_flag = (
+                " [PRE-READ EMAIL — do NOT extract action items from this image]"
+                if img["is_prereread"]
+                else " [POST-MEETING/FOLLOW-UP EMAIL — extract action items if this is an action item table]"
+            )
+            content.append(
+                {
+                    "type": "text",
+                    "text": (
+                        f"Image from: '{img['subject']}' (sender: {img['from']})"
+                        f"{prereread_flag}\nFilename: {img.get('filename', 'image')}"
+                    ),
+                }
+            )
+            content.append(
+                {
+                    "type": "image",
+                    "source": {
+                        "type": "base64",
+                        "media_type": img["media_type"],
+                        "data": img["data"],
+                    },
+                }
+            )
+    else:
+        content = intro  # type: ignore[assignment]
+
     models = ["claude-sonnet-4-6", "claude-haiku-4-5-20251001"]
     last_err = None
     for model in models:
@@ -426,7 +654,7 @@ def generate_briefing(
                 model=model,
                 max_tokens=4096,
                 system=SYSTEM_PROMPT,
-                messages=[{"role": "user", "content": f"Generate my daily briefing:\n\n{payload}"}],
+                messages=[{"role": "user", "content": content}],
             )
             return msg.content[0].text
         except Exception as exc:
@@ -580,7 +808,10 @@ def run_briefing() -> tuple[str, str, str]:
     seatalk_msgs = fetch_seatalk_snapshot(today_str)  # None if snapshot not pushed
     action_items = fetch_open_action_items(r)
 
-    briefing = generate_briefing(emails, events, today_str, window, seatalk_msgs, action_items)
+    briefing_raw = generate_briefing(emails, events, today_str, window, seatalk_msgs, action_items)
+    # Parse any new action items Claude found (from images or email text), save to Redis,
+    # and strip the machine-readable block from the briefing before storing/sending.
+    briefing = _parse_and_save_new_action_items(r, briefing_raw)
     store(today_str, briefing)
 
     base = os.environ.get("VERCEL_URL", "localhost:3000")
