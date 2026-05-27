@@ -1,17 +1,41 @@
 [
   {
-    "id": "sip-monthly-meeting-may22",
-    "source": "SIP Monthly Meeting — 22 May 2026",
-    "date_identified": "2026-05-22",
-    "action": "Review and follow up on action items from May 22 SIP monthly meeting — populate specific items from email thread when work Gmail is accessible",
+    "id": "sip-monthly-may26-ian-questions",
+    "source": "RE: May-26 SIP monthly meeting (Ian Ho, 27 May 12:43 SGT)",
+    "date_identified": "2026-05-27",
+    "action": "Ian Ho asked: (1) Can BR SKU limit be relaxed beyond 500k — is PRGR concern still sensitive? (2) Will OSP sellers be UE positive? (3) What is PY? — ensure Wei Qiang's team responds and loop back to Ian Ho",
     "eta": null,
     "done": false
   },
   {
-    "id": "cncb-pm-monthly-catchup-may26",
-    "source": "[Pre-read] CNCB-PM Monthly Catch Up 20260526 — 26 May 2026",
+    "id": "cncb-pm-may26-bpm-sls",
+    "source": "[Pre-read] CNCB-PM Monthly Catch Up 20260526 — follow-up (Rainy Kong, 26 May 20:06 SGT)",
     "date_identified": "2026-05-26",
-    "action": "Follow up on action items from CNCB-PM Monthly Catch Up pre-read — populate specific items from email thread when work Gmail is accessible",
+    "action": "[BPM item] Check seller feedbacks with SMT to identify system blockers for installation service integrated with SLS — coordinate with Qingqiang Li (PIC). ETA June 5.",
+    "eta": "2026-06-05",
+    "done": false
+  },
+  {
+    "id": "cncb-pm-may26-jh-june-golive",
+    "source": "[Pre-read] CNCB-PM Monthly Catch Up 20260526 — Jianghong follow-up",
+    "date_identified": "2026-05-26",
+    "action": "Jianghong asked: is the Slide 6 feature (SPX Pickup for CNLS FBS) confirmed to go live in June — if not, P&L target is at risk. Confirm June go-live status and respond to Jianghong.",
+    "eta": null,
+    "done": false
+  },
+  {
+    "id": "sip-doc-shuning-mention",
+    "source": "SIP weekly update_Q&A doc comment (Xiao Xuan mentioned Shuning, 26 May)",
+    "date_identified": "2026-05-26",
+    "action": "Shuning was @-mentioned in SIP weekly update_Q&A doc. Check the comment and respond or confirm.",
+    "eta": null,
+    "done": false
+  },
+  {
+    "id": "natasha-ho-transfer-approval",
+    "source": "For Your Action — Natasha Ho's Transfer (Staff Management, 26 May 08:54 SGT)",
+    "date_identified": "2026-05-26",
+    "action": "Approve or action Natasha Ho's Same Entity Transfer request in the staff management system.",
     "eta": null,
     "done": false
   }

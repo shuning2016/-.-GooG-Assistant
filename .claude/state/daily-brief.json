@@ -1,8 +1,8 @@
 {
   "version": 1,
   "timezone": "Asia/Singapore",
-  "last_briefing_at": "2026-05-27T08:08:00+08:00",
-  "last_successful_run_at": "2026-05-27T08:08:00+08:00",
-  "last_briefing_file": "briefings/2026-05-27-am.md",
-  "notes": "AM run. Window: 2026-05-26T08:05 SGT → 2026-05-27T08:08 SGT. Today is Hari Raya Haji (Singapore public holiday). Work Gmail/Calendar still inaccessible (14th consecutive run). Personal Gmail via MCP. Key signals: GitHub Claude App requesting updated permissions (07:04 SGT); Vercel mymom project now failing (new, 3rd project); fuofuo-family/fuofuofamily failures ongoing (3rd day). Carry-forward P1: Allianz SMJ2834R renewal, Maureen Yeoh (PageGroup) resume ~52h old. P2 carry-forward: Cloudflare China IP, DBS PayNow June 6, Yuna Kwon LinkedIn."
+  "last_briefing_at": "2026-05-27T15:21:00+08:00",
+  "last_successful_run_at": "2026-05-27T15:21:00+08:00",
+  "last_briefing_file": "briefings/2026-05-27-pm.md",
+  "notes": "PM run. Window: 2026-05-26T08:05 SGT → 2026-05-27T15:21 SGT. Work Gmail accessible. Today is Hari Raya Haji (SG public holiday). P0: Ian Ho replied May-26 SIP meeting with 3 unanswered questions; Swarm weekly review tomorrow (Jianghong, 8 pax); BPM SG bi-weekly tomorrow; Natasha Ho transfer approval needed; SIP doc @mention. P1: CB Management Meeting tomorrow (39 pax, not key domain); CNCB-PM BPM action June 5; Ian Ho ATP question in CB weekly update. Open action items state file updated with 5 real items from threads."
 }
