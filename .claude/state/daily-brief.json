@@ -1,8 +1,8 @@
 {
   "version": 1,
   "timezone": "Asia/Singapore",
-  "last_briefing_at": "2026-05-26T08:05:00+08:00",
-  "last_successful_run_at": "2026-05-26T08:05:00+08:00",
-  "last_briefing_file": "briefings/2026-05-26-am.md",
-  "notes": "AM run. Window: 2026-05-25T08:00 SGT → 2026-05-26T08:05 SGT. Work Gmail/Calendar still inaccessible (13th consecutive run). Personal Gmail only. Key signals: Allianz motor insurance renewal notice (SMJ2834R, expiry date in PDF); LinkedIn InMail from Maureen Yeoh (PageGroup) asking for resume for Fulfilment Product Leader role; Vercel deployment failures ongoing (both fuofuofamily and fuofuo-family, 2nd day); Yuna Kwon (Airwallex Korea) LinkedIn message. Tomorrow May 27 is Hari Raya Haji (Singapore public holiday). DBS PayNow deadline June 6 carry-forward."
+  "last_briefing_at": "2026-05-27T08:08:00+08:00",
+  "last_successful_run_at": "2026-05-27T08:08:00+08:00",
+  "last_briefing_file": "briefings/2026-05-27-am.md",
+  "notes": "AM run. Window: 2026-05-26T08:05 SGT → 2026-05-27T08:08 SGT. Today is Hari Raya Haji (Singapore public holiday). Work Gmail/Calendar still inaccessible (14th consecutive run). Personal Gmail via MCP. Key signals: GitHub Claude App requesting updated permissions (07:04 SGT); Vercel mymom project now failing (new, 3rd project); fuofuo-family/fuofuofamily failures ongoing (3rd day). Carry-forward P1: Allianz SMJ2834R renewal, Maureen Yeoh (PageGroup) resume ~52h old. P2 carry-forward: Cloudflare China IP, DBS PayNow June 6, Yuna Kwon LinkedIn."
 }
