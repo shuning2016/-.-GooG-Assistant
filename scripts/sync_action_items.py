@@ -57,16 +57,49 @@ def main() -> None:
         sys.exit(1)
 
     with open(STATE_FILE) as f:
-        items = json.load(f)
+        local_items: list[dict] = json.load(f)
 
     try:
         r = Redis(
             url=os.environ["UPSTASH_REDIS_REST_URL"],
             token=os.environ["UPSTASH_REDIS_REST_TOKEN"],
         )
-        r.set("open-action-items", json.dumps(items), ex=30 * 24 * 3600)  # 30-day TTL
-        open_count = sum(1 for item in items if not item.get("done", False))
-        print(f"Synced {len(items)} action items ({open_count} open) to Redis.")
+
+        # Merge: preserve any "done: true" states that were set via the web UI
+        # (Redis is the source of truth for done-state; local file is the source
+        # of truth for which items exist and their content).
+        try:
+            raw = r.get("open-action-items")
+            redis_items: list[dict] = json.loads(raw) if isinstance(raw, str) else (raw or [])
+        except Exception:
+            redis_items = []
+
+        redis_done: set[str] = {
+            item["id"] for item in redis_items if item.get("done") and item.get("id")
+        }
+
+        merged: list[dict] = []
+        for item in local_items:
+            item_id = item.get("id", "")
+            if item_id in redis_done:
+                # Web UI marked this done — honour it in both Redis and local file
+                merged.append({**item, "done": True})
+            else:
+                merged.append(item)
+
+        # Write merged state back to Redis
+        r.set("open-action-items", json.dumps(merged), ex=30 * 24 * 3600)  # 30-day TTL
+
+        # Write merged state back to local file so next sync is idempotent
+        with open(STATE_FILE, "w") as f:
+            json.dump(merged, f, indent=2)
+
+        open_count = sum(1 for item in merged if not item.get("done", False))
+        done_count = len(merged) - open_count
+        print(
+            f"Synced {len(merged)} action items to Redis "
+            f"({open_count} open, {done_count} done)."
+        )
     except KeyError as exc:
         print(
             f"  ERROR: Missing environment variable {exc}.\n"
