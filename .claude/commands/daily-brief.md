@@ -341,7 +341,7 @@ Format as:
 
 If the last briefing was less than 1 hour ago, or no previous briefing file exists, skip this step entirely.
 
-## Step 9: save the result locally
+## Step 9: save the result and sync state
 After producing the briefing:
 1. Ensure `briefings/` exists.
 2. Save the briefing to `briefings/YYYY-MM-DD HH:mm.md` using the current Singapore time for HH:mm.
@@ -350,6 +350,11 @@ After producing the briefing:
    - effective review window
    - any explicit user override
 4. Update `.claude/state/daily-brief.json` only after the save succeeds.
+5. Push action items to Redis so the web view shows the same widget:
+   ```bash
+   python3 scripts/sync_action_items.py
+   ```
+   If this fails (e.g. env vars not set), note it but do not block the briefing output.
 
 Recommended checkpoint update:
 - `last_briefing_at` = current Singapore timestamp

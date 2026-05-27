@@ -35,7 +35,6 @@ class DuplicateRunError(RuntimeError):
 GOOGLE_SCOPES = [
     "https://www.googleapis.com/auth/gmail.readonly",
     "https://www.googleapis.com/auth/calendar.readonly",
-    "https://www.googleapis.com/auth/drive.readonly",
 ]
 
 
@@ -123,27 +122,17 @@ def fetch_calendar(service, now_sgt: datetime) -> list[dict]:
     return events
 
 
-def fetch_drive(service, since: datetime) -> list[dict]:
-    """Return recently changed Drive files relevant to Shuning."""
-    lb = since.isoformat()
-    seen: set[str] = set()
-    files: list[dict] = []
 
-    queries = [
-        f"modifiedTime > '{lb}' and not 'me' in owners",
-        f"name contains 'TWCB' and modifiedTime > '{lb}'",
-    ]
-    for q in queries:
-        res = service.files().list(
-            q=q,
-            fields="files(id,name,owners,modifiedTime,webViewLink,shared,sharingUser,createdTime)",
-            pageSize=50,
-        ).execute()
-        for f in res.get("files", []):
-            if f["id"] not in seen:
-                seen.add(f["id"])
-                files.append(f)
-    return files
+def fetch_open_action_items(r: Redis) -> list[dict]:
+    """Read open action items from Redis. Returns empty list if none stored."""
+    try:
+        raw = r.get("open-action-items")
+        if not raw:
+            return []
+        data = json.loads(raw) if isinstance(raw, str) else raw
+        return [item for item in data if not item.get("done", False)]
+    except Exception:
+        return []
 
 
 # ─── Claude ───────────────────────────────────────────────────────────────────
@@ -167,6 +156,32 @@ If SeaTalk has P0 items, surface them here.
 Checkboxes grouped under **P0** (urgent today), **P1** (important soon), **P2** (can wait).
 Each item phrased as a concrete action. Include SeaTalk action items here too.
 
+## Open Action Items
+MANDATORY — always render this table. Never replace it with a flat list.
+
+Read from the OPEN ACTION ITEMS data provided. Show every item where `done: false`.
+
+Color coding (compute from today's SGT date vs each item's `eta` and `urgency`):
+- 🔴 Chase now — ETA is today or already overdue, OR no ETA and `urgency` = "high"
+- 🟠 Chase soon — ETA is 1–3 days away
+- 🟡 Watch — ETA is 4–7 days away
+- 🟢 Can wait — ETA is 8+ days away
+- ⚪ When possible — no ETA and `urgency` is "low", "medium", or null
+
+Sort order: 🔴 → 🟠 → 🟡 → 🟢 → ⚪. Within each color, sort by ETA ascending.
+
+Use this exact table format:
+🔴 Chase now  🟠 Chase soon (≤3 days)  🟡 Watch (4–7 days)  🟢 Can wait (8+ days)  ⚪ When possible
+
+| | Action | Source | ETA | Chase? |
+|--|--------|--------|-----|--------|
+| 🔴 | [action text] | Email: thread name | overdue | Chase now |
+| 🟠 | [action text] | Email: thread name | May 29 (2 days) | Chase soon |
+| 🟡 | [action text] | Email: thread name | Jun 5 (9 days) | Watch |
+| ⚪ | [action text] | SeaTalk: channel | — | When possible |
+
+If the OPEN ACTION ITEMS list is empty, write: `No open action items.`
+
 ## Today's Schedule
 Markdown table — columns: Time (SGT) | Meeting | Priority | Prep / notes
 Only include events from the "TODAY'S CALENDAR EVENTS" section here.
@@ -177,10 +192,6 @@ Markdown table — columns: Time (SGT) | Meeting | Priority | Prep / notes
 Include ALL events from the "TOMORROW'S CALENDAR EVENTS" section, not just ones needing prep.
 Apply the same priority classification (P0/P1/P2) and RSVP rules as today.
 Omit this section only if TOMORROW'S CALENDAR EVENTS is empty.
-
-## Google Drive Updates
-(Only include if relevant files found.) Each file as a clickable markdown link.
-Columns: File | Owner | Changed | Why flagged
 
 ## SeaTalk Activity
 Summarise internal chat messages. Use the sub-structure:
@@ -310,10 +321,10 @@ def _split_events_by_day(events: list, today_str: str) -> tuple[list, list]:
 def generate_briefing(
     emails: list,
     events: list,
-    drive_files: list,
     today: str,
     window: str,
     seatalk_msgs: list | None = None,
+    action_items: list | None = None,
 ) -> str:
     client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
 
@@ -324,6 +335,7 @@ def generate_briefing(
     )
 
     today_events, tomorrow_events = _split_events_by_day(events, today)
+    open_items = action_items or []
 
     payload = (
         f"REVIEW WINDOW: {window}\n"
@@ -334,8 +346,8 @@ def generate_briefing(
         f"{json.dumps(today_events, indent=2, default=str)}\n\n"
         f"=== TOMORROW'S CALENDAR EVENTS ({len(tomorrow_events)} events) ===\n"
         f"{json.dumps(tomorrow_events, indent=2, default=str)}\n\n"
-        f"=== GOOGLE DRIVE CHANGES ({len(drive_files)} files) ===\n"
-        f"{json.dumps(drive_files, indent=2, default=str)}\n\n"
+        f"=== OPEN ACTION ITEMS ({len(open_items)} items) ===\n"
+        f"{json.dumps(open_items, indent=2, default=str)}\n\n"
         f"=== SEATALK MESSAGES ===\n"
         f"{seatalk_section}"
     )
@@ -496,14 +508,13 @@ def run_briefing() -> tuple[str, str, str]:
     creds = google_creds()
     gmail_svc = build("gmail", "v1", credentials=creds)
     cal_svc = build("calendar", "v3", credentials=creds)
-    drive_svc = build("drive", "v3", credentials=creds)
 
     emails = fetch_gmail(gmail_svc, since)
     events = fetch_calendar(cal_svc, now_sgt)
-    drive_files = fetch_drive(drive_svc, since)
     seatalk_msgs = fetch_seatalk_snapshot(today_str)  # None if snapshot not pushed
+    action_items = fetch_open_action_items(r)
 
-    briefing = generate_briefing(emails, events, drive_files, today_str, window, seatalk_msgs)
+    briefing = generate_briefing(emails, events, today_str, window, seatalk_msgs, action_items)
     store(today_str, briefing)
 
     base = os.environ.get("VERCEL_URL", "localhost:3000")
