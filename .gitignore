@@ -5,3 +5,4 @@ vercel-daily-brief/client_secrets.json
 vercel-daily-brief/client_secrets.json
 .vercel
 .env*.local
+*.DS_Store
