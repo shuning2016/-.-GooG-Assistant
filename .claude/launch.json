@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "qa-preview",
+      "runtimeExecutable": "python3.11",
+      "runtimeArgs": ["-m", "http.server", "7842", "--directory", "/tmp/qa_serve"],
+      "port": 7842
+    }
+  ]
+}
