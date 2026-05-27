@@ -136,21 +136,27 @@ Always include:
 - today's meetings
 - all-day events
 - after-hours meetings
-- overlapping meetings
 - tomorrow's first meeting if prep today would help
 
-A meeting is important when any of these are true:
-- organizer or attendee includes Shuning or a VIP
-- external attendees are involved
-- the title or description signals a review, decision, escalation, interview, travel, contract, hiring, or action item
-- Shuning is likely expected to present, decide, approve, or provide an update
-- supporting material, deck, pre-read, or prep is implied
+**Meeting P0** — flag when any of these are true:
+- The title or description is related to a key domain (Swarm/OSP, SIP, FP&A, Budget, BPM) **and** Shuning has accepted the invite
+- Shuning is specifically asked to present, decide, or provide an update **and** a VIP is involved **and** Shuning has accepted the invite
+
+**Meeting P1** — flag when any of these are true (and not P0):
+- Organizer or attendee includes a VIP (10 or more attendees) **and** Shuning has accepted
+- External attendees are involved **and** Shuning has accepted
+- The title signals a review, decision, escalation, interview, travel, contract, hiring, or action item **and** Shuning has accepted
+- A pre-read, deck, or deliverable is implied **and** Shuning has accepted
+- **Always check RSVP.** If Shuning has not accepted (declined or no response), downgrade to P2 and note the RSVP status explicitly — do not generate prep recommendations.
+
+**VIP attending a meeting NOT related to any key domain = P1, not P0, regardless of attendee count.**
+
+**Meeting P2:** Total attendees > 30; not key domain; Shuning has not accepted.
 
 Prep expectations:
 - default important-meeting prep window: 30 minutes
 - high-stakes meeting prep window: 60 minutes
-- flag overlaps explicitly
-- do not flag transit or location buffers
+- do not flag meeting overlaps or transit buffers; Shuning handles scheduling herself
 
 ## Step 5: fetch and analyze meeting pre-reads
 For each important meeting identified in Step 4, search the last 24 hours of email for pre-read materials — typically emails with attachments or Google Drive links sent ahead of the meeting.
@@ -225,12 +231,12 @@ For each important meeting where a pre-read was found:
 Use this default rubric.
 
 ### P0
-- Due today
-- Needs a reply today
-- Meeting today needs prep soon
-- Boss or VIP direct ask with time sensitivity
+- Email or meeting is related to a key domain (Swarm/OSP, SIP, FP&A, Budget, BPM)
+- Shuning is specifically @-mentioned or in `To:` with a direct ask **and** a VIP is involved
+- Due today or needs a reply today, AND related to a key domain
+- Meeting today needs prep soon **and** Shuning has accepted **and** it is key-domain related
 - Travel, interview, contract, approval, or escalation issue that can block progress
-- Calendar conflict affecting today's execution
+- **VIP involvement alone without key domain relevance = P1, not P0**
 
 ### P1
 - Likely needs a reply within 48 hours
@@ -256,6 +262,12 @@ If a SeaTalk snapshot was pushed to Redis today (by `seatalk_snapshot.py` at 07:
 - Use markdown bold (`**text**`) only. **Never use HTML tags** (`<strong>`, `<em>`, etc.).
 - If the snapshot is unavailable, note: `SeaTalk snapshot unavailable (seatalk_snapshot.py may not have run at 07:50 SGT).`
 
+### SeaTalk question tracking
+After analyzing the SeaTalk snapshot, check `.claude/state/seatalk-pending-questions.json`. If Shuning asked any questions in SeaTalk that show no clear reply from others yet:
+1. Add them to the JSON file (if not already present): `{"id": "slug", "channel": "name", "date_asked": "YYYY-MM-DD", "question": "gist", "resolved": false}`
+2. Include a **Pending SeaTalk Questions** sub-section listing all unresolved questions with date and channel.
+Only Shuning can mark questions resolved.
+
 ## Step 7: produce the briefing
 The final answer should be crisp, action-oriented, and easy to skim.
 
@@ -275,14 +287,20 @@ Use checkboxes grouped by priority:
 
 Each item should be phrased as an action, not just an observation.
 
+### 2b) Open Action Items
+After the prioritized checklist, include this section:
+
+Load `.claude/state/open-action-items.json`. List every item where `done: false`. Format each as:
+- `[ ] **[source]** — [action] — ETA: [eta or TBD]`
+
+If the file doesn't exist or has no open items, write: `No open action items.`
+
 ### 3) Today's schedule table
 Use a markdown table with these columns:
 - Time
 - Meeting
 - Why it matters
 - Prep / owner note
-
-Include overlaps and after-hours items clearly.
 
 ### 4) Google Drive updates
 Include this section when there are relevant Drive file changes. For each file show:

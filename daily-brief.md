@@ -66,10 +66,11 @@ Any email related to one or more of these domains is treated as domain-relevant 
 ### Classification rules — apply in order
 
 **P0 (super important)** — flag when any of these are true:
-- The email is from or to a VIP sender **and** total recipients < 10
-- The subject or body is related to a key domain
+- The subject, body, or thread context is related to a key domain (Swarm/OSP, SIP, FP&A, Budget, BPM)
 - Subject contains `for your action` or the word `action` **and** Shuning is in `To:`
-- A direct ask, deadline, escalation, or blocker is present **and** a VIP is involved
+- Shuning is specifically @-mentioned or in `To:` with a direct ask **and** a VIP is the sender or has replied in the thread
+
+**VIP involvement alone — without key domain relevance and without a direct ask to Shuning — does not make an email P0. Treat it as P1 instead.**
 
 **P1 (important)** — flag when any of these are true (and not P0):
 - From a VIP sender but total recipients ≥ 10
@@ -149,8 +150,10 @@ Same as Step 2. A meeting is domain-relevant when its title or description relat
 ### Classification rules — apply in order
 
 **P0 (super important)** — flag when any of these are true:
-- A VIP is the organizer or an attendee **and** total attendees < 10
-- The title or description is related to a key domain
+- The title or description is related to a key domain (Swarm/OSP, SIP, FP&A, Budget, BPM) **and** Shuning has accepted
+- Shuning is specifically asked to present, decide, or provide an update **and** a VIP is involved **and** Shuning has accepted
+
+**VIP attending a meeting NOT related to any key domain = P1, not P0, regardless of attendee count.**
 
 **P1 (important)** — flag when any of these are true (and not P0):
 - Organizer or attendee includes Shuning or a VIP (10 or more attendees)
@@ -169,13 +172,12 @@ Same as Step 2. A meeting is domain-relevant when its title or description relat
 - Today's meetings on the work calendar
 - All-day events
 - After-hours meetings
-- Overlapping meetings (flag explicitly)
 - Tomorrow's first meeting if prep today would help
 
 ### Prep expectations
 - Default important-meeting prep window: 30 minutes before
 - High-stakes meeting prep window: 60 minutes before
-- Do not flag transit or location buffers
+- Do not flag meeting overlaps or transit buffers; Shuning handles scheduling herself
 - Report all meetings in order: P0 first, then P1, then P2.
 
 ## Step 5: fetch and analyze meeting pre-reads
@@ -251,13 +253,12 @@ For each important meeting where a pre-read was found:
 Apply these rules to both emails and meetings. Report all items in sequence: P0 first, then P1, then P2.
 
 ### P0 — super important (act today)
-- Email or meeting involves a VIP with fewer than 10 total recipients/attendees
 - Email or meeting is related to a key domain (Swarm/OSP, SIP, FP&A, Budget, BPM)
-- Due today or needs a reply today
-- Meeting today needs prep soon
-- Boss or VIP direct ask with time sensitivity
+- Shuning is specifically @-mentioned or in `To:` with a direct ask **and** a VIP is involved
+- Due today or needs a reply today, AND related to a key domain
+- Meeting today needs prep soon **and** Shuning has accepted **and** is key-domain related
 - Travel, interview, contract, approval, or escalation issue that can block progress
-- Calendar conflict affecting today's execution
+- **VIP involvement alone without key domain relevance = P1, not P0**
 
 ### P1 — important (handle within 48 hours)
 - Email from a VIP but total recipients ≥ 10
@@ -276,6 +277,16 @@ Apply these rules to both emails and meetings. Report all items in sequence: P0 
 - Informational updates with mild action value
 - Lower-risk follow-up
 - Items that can wait beyond the next 2 days
+
+## Step 6b: SeaTalk Activity and question tracking (if snapshot available)
+
+If a SeaTalk snapshot was pushed to Redis today (by `seatalk_snapshot.py` at 07:50 SGT), read it and include a **SeaTalk Activity** section. Follow the triage rules and format in `SEATALK.md` exactly.
+
+**SeaTalk question tracking:** After analyzing the snapshot, check `.claude/state/seatalk-pending-questions.json`. If Shuning asked questions in any channel or DM that show no clear reply from others yet:
+1. Add them to the JSON (if not already present): `{"id": "slug", "channel": "name", "date_asked": "YYYY-MM-DD", "question": "gist", "resolved": false}`
+2. Include a **Pending SeaTalk Questions** sub-section listing all unresolved questions (date, channel, question gist).
+
+Only Shuning can mark questions resolved. If the snapshot is unavailable, note it and still display any existing pending questions from the JSON file.
 
 ## Step 7: produce the briefing
 The final answer should be crisp, action-oriented, and easy to skim.
@@ -296,14 +307,20 @@ Use checkboxes grouped by priority:
 
 Each item should be phrased as an action, not just an observation.
 
+### 2b) Open Action Items
+After the prioritized checklist, include this section:
+
+Load `.claude/state/open-action-items.json`. List every item where `done: false`. Format each as:
+- `[ ] **[source]** — [action] — ETA: [eta or TBD]`
+
+If the file doesn't exist or has no open items, write: `No open action items.`
+
 ### 3) Today's schedule table
 Use a markdown table with these columns:
 - Time
 - Meeting
 - Why it matters
 - Prep / owner note
-
-Include overlaps and after-hours items clearly.
 
 ### 4) Google Drive updates
 Include this section when there are relevant Drive file changes. For each file show:

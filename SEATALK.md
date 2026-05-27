@@ -175,6 +175,20 @@ These must be set in `~/.goog-assistant.env` (local) or as Vercel environment va
 Install both into `~/Library/LaunchAgents/` and load with `launchctl load`.
 See `LaunchAgents/README.md` for installation steps.
 
+## Shuning's unanswered question tracking
+
+When processing any SeaTalk snapshot or live read, scan for messages where `fromSelf=true` (Shuning is the sender) that contain a question or explicit ask, AND no reply from others follows in that thread/session after her message.
+
+For each such unanswered question:
+1. Append to `.claude/state/seatalk-pending-questions.json`:
+   ```json
+   {"id": "unique-slug", "channel": "channel or DM name", "date_asked": "YYYY-MM-DD", "question": "gist of Shuning's question", "resolved": false}
+   ```
+2. Surface in the daily brief under **Pending SeaTalk Questions** — show channel, date asked, and gist.
+3. Never auto-resolve. Only mark `resolved: true` when Shuning explicitly confirms.
+
+Do not track casual statements or affirmations (e.g., "ok", "noted", "thanks") — only genuine questions or asks that need an answer.
+
 ## Hard guardrails
 - **Read-only by default.** Do not send SeaTalk messages unless explicitly asked.
 - `SEATALK_ALLOW_SEND` must be explicitly set to `true` to enable any outbound messages.
