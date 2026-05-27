@@ -58,6 +58,7 @@ Key points:
   `scripts/seatalk_summary.py` and are emailed to Shuning.wang@shopee.com.
 - Apply SeaTalk triage rules (P0/P1/P2) from SEATALK.md when classifying messages.
 - SeaTalk is **read-only by default**. Never send messages unless explicitly asked.
+- When processing SeaTalk snapshots, detect questions Shuning asked that lack a clear answer. Persist them per the **SeaTalk question tracking** rules below and surface in the next day's brief.
 
 ## User context
 - User name: Shuning
@@ -97,11 +98,11 @@ Apply the key domains list and VIP list to classify every email.
 
 ### Super important (P0) — escalate immediately
 An email is P0 when **any** of these are true:
-- The email is from or to a VIP sender **and** the total number of recipients is fewer than 10
-- **A VIP has specifically replied in the email thread** — regardless of recipient count or domain
 - The subject, body, **or thread context** is related to a key domain (Swarm/OSP, SIP, FP&A, Budget, BPM) — check the full thread, not just the subject line
 - The subject contains `for your action` or the word `action` **and** Shuning is in `To:`
-- A direct ask, deadline, escalation, or blocker is present **and** a VIP is involved
+- Shuning is specifically @-mentioned or directly addressed in `To:` (not only `Cc:`) with a direct ask **and** a VIP is the sender or has replied in the thread
+
+**VIP involvement alone — without key domain relevance and without a direct ask to Shuning — does not make an email P0. Treat it as P1 instead.**
 
 ### Important (P1) — handle within 48 hours
 An email is P1 when **any** of these are true:
@@ -135,9 +136,10 @@ Apply the key domains list and VIP list to classify every meeting.
 
 ### Super important meetings (P0)
 A meeting is P0 when **any** of these are true:
-- A VIP is the organizer or an attendee **and** total attendees is fewer than 10 **and** Shuning has accepted the invite
-- **A VIP has specifically sent a direct reply or message related to the meeting** (e.g., commented on pre-reads, sent a follow-up, or reached out directly) — regardless of attendee count — and Shuning has accepted the invite
 - The title or description is related to a key domain (Swarm/OSP, SIP, FP&A, Budget, BPM) **and** Shuning has accepted the invite
+- Shuning is specifically asked to present, decide, or provide an update **and** a VIP is involved **and** Shuning has accepted the invite
+
+**A VIP attending or commenting on a meeting that is NOT related to any key domain is P1, not P0 — regardless of attendee count.**
 
 ### Important meetings (P1)
 A meeting is P1 when **any** of these are true (and not already P0):
@@ -159,16 +161,12 @@ For daily briefings, always review:
 - Today's meetings on the work calendar
 - All-day events
 - After-hours meetings
-- Overlapping meetings
 - Tomorrow's first meeting when prep today would be useful
-
-Flag overlaps explicitly.
 
 ## Prep expectations
 - Default prep lead time: 30 minutes before a normal important meeting
 - Extended prep lead time: 60 minutes before a high-stakes meeting
-- Flag meeting overlaps explicitly
-- Do not flag missing transit buffers; Shuning does not need this
+- Do not flag meeting overlaps or missing transit buffers; Shuning handles scheduling herself
 - **Only generate prep recommendations for meetings Shuning has accepted.** If RSVP is declined or not responded, do not generate any prep action.
 - When summarizing pre-reads or VIP commentary for a meeting, only include content within Shuning's five key domains (Swarm/OSP, SIP, FP&A, Budget, BPM). Do not pull in VIP feedback on unrelated topics or other teams' domains.
 
@@ -176,9 +174,14 @@ Flag overlaps explicitly.
 Every daily briefing should follow this structure:
 1. A very short executive brief at the top
 2. A prioritized checklist using P0, P1, and P2
-3. A schedule table for today
-4. Clear action bullets
-5. These sections in order when relevant:
+3. Open action items (key domain carry-forwards — see below)
+4. A schedule table for today
+5. Clear action bullets
+6. These sections in order when relevant:
+
+**Executive brief rule:** Only surface items in the executive brief that are P0 — meaning they are related to a key domain (Swarm/OSP, SIP, FP&A, Budget, BPM) or require Shuning's direct action today. Non-key-domain items, even with VIP involvement, belong in the P1 checklist only — not the executive brief.
+
+The sections in order when relevant:
    - What matters today
    - What can wait
    - What to reply to
@@ -199,13 +202,12 @@ Every daily briefing should follow this structure:
 ## Priority rubric
 Use this by default:
 - P0 (super important — act today):
-  - Email or meeting involves a VIP with fewer than 10 total recipients/attendees **and** Shuning has accepted (for meetings)
   - Email or meeting is related to a key domain (Swarm/OSP, SIP, FP&A, Budget, BPM) — check subject, body, and full thread
-  - Due today or needs a reply today
-  - Meeting today needs prep soon **and** Shuning has accepted the invite
-  - Boss or VIP direct ask with time sensitivity
+  - Due today or needs a reply today, AND related to a key domain or Shuning is directly asked
+  - Meeting today needs prep soon **and** Shuning has accepted the invite **and** is related to a key domain
+  - Shuning is specifically @-mentioned or in `To:` with a direct ask **and** a VIP is involved
   - Travel, interview, contract, or approval issue that can block progress
-  - Calendar conflict affecting today's execution
+  - **VIP involvement without key domain relevance = P1, not P0**
 - P1 (important — handle within 48 hours):
   - Meets the P1 email or meeting criteria above (VIP with 10+ recipients, direct ask, deadline in To:, external attendees, accepted invite, etc.)
   - Likely reply needed within 48 hours
@@ -221,6 +223,52 @@ Use this by default:
   - Optional prep
   - Lower-risk follow-up
   - Items that can wait beyond the next 2 days
+
+## Open action item tracking
+
+When reading key domain (Swarm/OSP, SIP, FP&A, Budget, BPM) email threads, meeting pre-reads, or SeaTalk messages, extract any action items assigned to Shuning and persist them in `.claude/state/open-action-items.json`.
+
+### File format
+```json
+[
+  {
+    "id": "unique-kebab-slug",
+    "source": "email subject or meeting title",
+    "date_identified": "YYYY-MM-DD",
+    "action": "one-sentence description of what Shuning needs to do",
+    "eta": "YYYY-MM-DD or null",
+    "done": false
+  }
+]
+```
+
+### Rules
+- **Add** items when new action items for Shuning are found in key domain threads or meeting pre-reads.
+- **Never auto-close** items. Only Shuning marks them done (verbally: "mark X as done" → update `done: true`).
+- **Every daily briefing must include an "Open Action Items" section** immediately after the Prioritized Checklist, listing all items where `done: false`. Show source, action, and ETA.
+- If the state file does not exist, create it as an empty array `[]` and populate as items are found.
+
+## SeaTalk question tracking
+
+When processing SeaTalk messages, if Shuning has asked a question in a channel or DM that does not yet have a clear reply or resolution, note it in `.claude/state/seatalk-pending-questions.json` and include a reminder in the next day's daily brief under **Pending SeaTalk Questions**.
+
+### File format
+```json
+[
+  {
+    "id": "unique-kebab-slug",
+    "channel": "channel or DM name",
+    "date_asked": "YYYY-MM-DD",
+    "question": "Shuning's question or the gist of it",
+    "resolved": false
+  }
+]
+```
+
+### Rules
+- Only track questions Shuning herself asked, not questions asked of her.
+- In each daily brief, show any unresolved questions with their date and channel so Shuning can follow up.
+- Mark resolved only when Shuning confirms the answer was received.
 
 ## State and reporting
 - Use `.claude/state/daily-brief.json` as the checkpoint file for the daily brief workflow.

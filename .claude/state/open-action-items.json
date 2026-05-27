@@ -1,0 +1,18 @@
+[
+  {
+    "id": "sip-monthly-meeting-may22",
+    "source": "SIP Monthly Meeting — 22 May 2026",
+    "date_identified": "2026-05-22",
+    "action": "Review and follow up on action items from May 22 SIP monthly meeting — populate specific items from email thread when work Gmail is accessible",
+    "eta": null,
+    "done": false
+  },
+  {
+    "id": "cncb-pm-monthly-catchup-may26",
+    "source": "[Pre-read] CNCB-PM Monthly Catch Up 20260526 — 26 May 2026",
+    "date_identified": "2026-05-26",
+    "action": "Follow up on action items from CNCB-PM Monthly Catch Up pre-read — populate specific items from email thread when work Gmail is accessible",
+    "eta": null,
+    "done": false
+  }
+]
