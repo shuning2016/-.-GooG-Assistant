@@ -53,8 +53,56 @@ def google_creds() -> Credentials:
     return creds
 
 
+_KEY_DOMAIN_TERMS = (
+    "swarm", "osp", "sip", "fp&a", "fpa", "budget", "bpm",
+    "cncb", "cnsip", "cnls", "sls", "spx", "fbs",
+)
+
+
+def _is_key_domain(subject: str, snippet: str) -> bool:
+    """Return True if subject or snippet mentions a key domain."""
+    text = (subject + " " + snippet).lower()
+    return any(term in text for term in _KEY_DOMAIN_TERMS)
+
+
+def _extract_plain_body(payload: dict, max_chars: int = 3000) -> str:
+    """Recursively extract plain-text body from a Gmail message payload."""
+    import base64
+
+    mime = payload.get("mimeType", "")
+    body_data = payload.get("body", {}).get("data", "")
+
+    if body_data:
+        raw = base64.urlsafe_b64decode(body_data + "==").decode("utf-8", errors="replace")
+        if "plain" in mime:
+            return raw[:max_chars]
+        if "html" in mime:
+            import re
+            text = re.sub(r"<[^>]+>", " ", raw)
+            text = re.sub(r"\s{2,}", " ", text).strip()
+            return text[:max_chars]
+
+    parts = payload.get("parts", [])
+    # Prefer plain text over HTML
+    for p in parts:
+        if "plain" in p.get("mimeType", ""):
+            result = _extract_plain_body(p, max_chars)
+            if result:
+                return result
+    for p in parts:
+        result = _extract_plain_body(p, max_chars)
+        if result:
+            return result
+    return ""
+
+
 def fetch_gmail(service, since: datetime) -> list[dict]:
-    """Return up to 40 message summaries (headers + snippet) since `since`."""
+    """Return up to 40 message summaries since `since`.
+
+    For key-domain emails (Swarm/OSP/SIP/FP&A/Budget/BPM and related terms),
+    fetch the full plain-text body so action items in tables are visible to Claude.
+    All other emails get headers + snippet only.
+    """
     after_ts = int(since.timestamp())
     q = f"after:{after_ts} -category:promotions -category:social -category:updates"
     result = service.users().messages().list(userId="me", q=q, maxResults=50).execute()
@@ -62,23 +110,41 @@ def fetch_gmail(service, since: datetime) -> list[dict]:
 
     out = []
     for m in messages:
-        detail = service.users().messages().get(
+        # First pass: metadata only (fast)
+        meta = service.users().messages().get(
             userId="me",
             id=m["id"],
             format="metadata",
             metadataHeaders=["From", "To", "Cc", "Subject", "Date"],
         ).execute()
-        h = {hdr["name"]: hdr["value"] for hdr in detail.get("payload", {}).get("headers", [])}
+        h = {hdr["name"]: hdr["value"] for hdr in meta.get("payload", {}).get("headers", [])}
+        subject = h.get("Subject", "")
+        snippet = meta.get("snippet", "")
+
+        body_text = ""
+        if _is_key_domain(subject, snippet):
+            # Second pass: full body for key-domain emails
+            try:
+                full = service.users().messages().get(
+                    userId="me",
+                    id=m["id"],
+                    format="full",
+                ).execute()
+                body_text = _extract_plain_body(full.get("payload", {}))
+            except Exception:
+                pass  # Fall back to snippet if full fetch fails
+
         out.append(
             {
                 "id": m["id"],
-                "thread_id": detail.get("threadId"),
+                "thread_id": meta.get("threadId"),
                 "from": h.get("From", ""),
                 "to": h.get("To", ""),
                 "cc": h.get("Cc", ""),
-                "subject": h.get("Subject", ""),
+                "subject": subject,
                 "date": h.get("Date", ""),
-                "snippet": detail.get("snippet", ""),
+                "snippet": snippet,
+                "body": body_text,  # full plain text for key-domain emails, "" otherwise
             }
         )
     return out

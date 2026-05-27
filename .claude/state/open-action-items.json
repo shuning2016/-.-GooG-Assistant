@@ -40,6 +40,16 @@
     "done": false
   },
   {
+    "id": "cncb-pm-may26-ar-usd-pricing",
+    "source": "CNCB-PM Monthly Catch Up follow-up (Rainy Kong, 26 May 20:06 SGT)",
+    "source_type": "email",
+    "date_identified": "2026-05-27",
+    "action": "Follow up with Vesper on AR USD Pricing: (1) round up/down logic for FE ARS price — conclusion due EOW; (2) campaign price lock on ARS. ETA 29 May.",
+    "eta": "2026-05-29",
+    "urgency": "high",
+    "done": false
+  },
+  {
     "id": "cncb-pm-may26-bpm-sls",
     "source": "[Pre-read] CNCB-PM Monthly Catch Up 20260526 — follow-up (Rainy Kong, 26 May)",
     "source_type": "email",
