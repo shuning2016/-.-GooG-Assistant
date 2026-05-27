@@ -521,7 +521,7 @@ function _renderActionItems(items) {{
       + '<td style="font-size:.8rem;color:#6b7280">' + srcLabel + '</td>'
       + '<td style="white-space:nowrap">' + etaDisp + '</td>'
       + '<td style="white-space:nowrap;color:' + (COLOR[c]||'#6b7280') + ';font-weight:600">' + LABEL[c] + '</td>'
-      + '<td><button class="ai-done-btn" onclick="markDone(\'' + escHtml(item.id) + '\',this)">✓ Done</button></td>'
+      + '<td><button class="ai-done-btn" data-id="' + escHtml(item.id) + '" onclick="markDone(this.dataset.id,this)">✓ Done</button></td>'
       + '</tr>';
   }});
   html += '</tbody></table>';
