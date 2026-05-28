@@ -231,6 +231,10 @@ def _render_html(briefing_md: str, date_str: str) -> str:
   .st-body .p1-badge{{display:inline-block;background:#fffbeb;color:var(--amber);border:1px solid #fde68a;border-radius:4px;font-size:.68rem;font-weight:700;padding:1px 5px;margin-right:5px;vertical-align:middle}}
   .st-body .p2-badge{{display:inline-block;background:#f0f9ff;color:#0369a1;border:1px solid #bae6fd;border-radius:4px;font-size:.68rem;font-weight:700;padding:1px 5px;margin-right:5px;vertical-align:middle}}
   .st-error{{color:#9f1239;background:#fff1f2;border:1px solid #fecdd3;border-radius:8px;padding:12px 16px;font-size:.88rem}}
+  .st-hint{{margin-top:10px;color:#374151;font-size:.84rem;line-height:1.6}}
+  .st-hint code{{display:inline-block;background:#f3f4f6;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;font-family:monospace;font-size:.83rem;word-break:break-all}}
+  .copy-btn{{margin-left:8px;padding:3px 10px;border:1px solid #d1d5db;border-radius:4px;background:#fff;font-size:.78rem;cursor:pointer;vertical-align:middle}}
+  .copy-btn:hover{{background:#f3f4f6}}
   .st-src{{display:inline-flex;align-items:center;font-size:.7rem;font-weight:700;border-radius:4px;padding:2px 7px;margin-right:6px;white-space:nowrap;vertical-align:middle}}
   .st-src-group{{background:#EFF7FC;color:var(--teal);border:1px solid #bae6fd}}
   .st-src-dm{{background:#f5f3ff;color:#7c3aed;border:1px solid #ddd6fe}}
@@ -540,6 +544,14 @@ function mdToHtml(raw) {{
   if (inList) out += '</ul>';
   return out;
 }}
+function copyCmd(btn) {{
+  var cmd = btn.dataset.cmd || '';
+  navigator.clipboard.writeText(cmd).then(function() {{
+    var orig = btn.textContent;
+    btn.textContent = 'Copied!';
+    setTimeout(function() {{ btn.textContent = orig; }}, 2000);
+  }});
+}}
 function _sgtNow() {{
   var sgt = new Date(Date.now() + 8 * 3600000);
   return sgt.toISOString().slice(11,16) + ' SGT';
@@ -809,8 +821,17 @@ function _fetchSeatalk(force) {{
         document.getElementById('stContent').innerHTML = stMd(d.summary);
         tagPriorities(document.getElementById('stContent'));
       }} else {{
-        document.getElementById('stContent').innerHTML =
-          '<div class="st-error">' + escHtml(d.error || 'Unknown error') + '</div>';
+        var errHtml = '<div class="st-error">' + escHtml(d.error || 'Unknown error');
+        if (d.hint === 'run_snapshot') {{
+          var cmd = 'python3 ~/.goog-assistant/scripts/seatalk_snapshot.py';
+          errHtml += '<div class="st-hint">'
+            + 'Run this in Terminal, then click Refresh:<br>'
+            + '<code>' + escHtml(cmd) + '</code>'
+            + ' <button class="copy-btn" data-cmd="' + escHtml(cmd) + '" onclick="copyCmd(this)">&#128203; Copy</button>'
+            + '</div>';
+        }}
+        errHtml += '</div>';
+        document.getElementById('stContent').innerHTML = errHtml;
       }}
     }})
     .catch(function(err) {{
