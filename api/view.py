@@ -510,7 +510,7 @@ function mdToHtml(raw) {{
   // Handles: **bold**, bullet lists (- item), blank-line paragraphs, --- hr.
   var lines = String(raw)
     .replace(/^\[DECK SUMMARY\]\s*/i, '')  // strip storage prefix
-    .split('\n');
+    .split('\\n');
   var out = '';
   var inList = false;
 
