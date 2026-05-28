@@ -19,6 +19,7 @@ import json
 import os
 import subprocess
 import sys
+import time
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
@@ -54,8 +55,11 @@ def _seatalk_root() -> str:
     return os.environ.get("SEATALK_SKILL_ROOT", _DRIVE)
 
 
-def read_messages(hours: int) -> list[dict]:
-    """Run redux_related_messages.py and return parsed message list."""
+def read_messages(hours: int, retries: int = 3, retry_delay: int = 30) -> list[dict]:
+    """Run redux_related_messages.py and return parsed message list.
+    Retries up to `retries` times with `retry_delay` seconds between attempts
+    to handle the case where Chrome/SeaTalk isn't open yet at script start.
+    """
     reader = os.path.join(_seatalk_root(), "scripts", "redux_related_messages.py")
     if not os.path.exists(reader):
         raise FileNotFoundError(
@@ -63,28 +67,33 @@ def read_messages(hours: int) -> list[dict]:
             "Set SEATALK_SKILL_ROOT to the use-seatalk repo path."
         )
 
-    result = subprocess.run(
-        [sys.executable, reader, "--last-hours", str(hours),
-         "--watch-groups", KEY_DOMAIN_GROUPS],
-        capture_output=True,
-        text=True,
-        timeout=90,
-    )
-    if result.returncode != 0:
-        raise RuntimeError(
-            f"CDP reader exited {result.returncode}:\n{result.stderr.strip()}"
+    last_err = ""
+    for attempt in range(1, retries + 1):
+        result = subprocess.run(
+            [sys.executable, reader, "--last-hours", str(hours),
+             "--watch-groups", KEY_DOMAIN_GROUPS],
+            capture_output=True,
+            text=True,
+            timeout=90,
         )
+        if result.returncode == 0:
+            data = json.loads(result.stdout)
+            if isinstance(data, list):
+                return data
+            return data.get("messages", [])
+        last_err = result.stderr.strip()
+        if attempt < retries:
+            print(f"  CDP attempt {attempt} failed, retrying in {retry_delay}s…", file=sys.stderr)
+            time.sleep(retry_delay)
 
-    data = json.loads(result.stdout)
-
-    # redux_related_messages.py returns {"messages": [...], "window": {...}, ...}
-    if isinstance(data, list):
-        return data
-    return data.get("messages", [])
+    raise RuntimeError(f"CDP reader failed after {retries} attempts:\n{last_err}")
 
 
-def push_to_redis(date_str: str, messages: list[dict]) -> None:
-    """Store messages in Upstash Redis under key seatalk-snapshot:{date}."""
+def push_to_redis(date_str: str, messages: list[dict], retries: int = 4, retry_delay: int = 15) -> None:
+    """Store messages in Upstash Redis under key seatalk-snapshot:{date}.
+    Retries up to `retries` times to handle transient network/DNS issues
+    that occur right after the Mac wakes from sleep.
+    """
     try:
         from upstash_redis import Redis
     except ImportError:
@@ -97,8 +106,19 @@ def push_to_redis(date_str: str, messages: list[dict]) -> None:
         token=os.environ["UPSTASH_REDIS_REST_TOKEN"],
     )
     key = f"seatalk-snapshot:{date_str}"
-    r.set(key, json.dumps(messages, default=str), ex=24 * 3600)
-    print(f"  Pushed {len(messages)} messages → Redis key: {key}")
+    last_exc: Exception | None = None
+    for attempt in range(1, retries + 1):
+        try:
+            r.set(key, json.dumps(messages, default=str), ex=24 * 3600)
+            print(f"  Pushed {len(messages)} messages → Redis key: {key}")
+            return
+        except Exception as exc:
+            last_exc = exc
+            if attempt < retries:
+                print(f"  Redis push attempt {attempt} failed ({exc}), retrying in {retry_delay}s…",
+                      file=sys.stderr)
+                time.sleep(retry_delay)
+    raise RuntimeError(f"Redis push failed after {retries} attempts: {last_exc}")
 
 
 def main() -> None:
