@@ -342,7 +342,7 @@ def generate_pdf_qa(
     ]
 
     msg = client.messages.create(
-        model="claude-sonnet-4-6",
+        model="claude-3-5-haiku-20241022",
         max_tokens=4096,
         system=system_prompt_text,
         messages=[{"role": "user", "content": user_content}],
