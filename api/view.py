@@ -802,8 +802,10 @@ function _fetchSeatalk(force) {{
       if (d.ok) {{
         var ts = d.generated_at || _sgtNow();
         var cached = (d.cached && d.age_min > 0) ? ' · cached ' + d.age_min + 'min ago' : '';
+        var dateLbl = (d.snapshot_date && d.snapshot_date !== _PAGE_DATE)
+          ? ' · snapshot from ' + d.snapshot_date : '';
         document.getElementById('stTimestamp').textContent =
-          d.message_count + ' messages · ' + ts + cached;
+          d.message_count + ' messages · ' + ts + cached + dateLbl;
         document.getElementById('stContent').innerHTML = stMd(d.summary);
         tagPriorities(document.getElementById('stContent'));
       }} else {{

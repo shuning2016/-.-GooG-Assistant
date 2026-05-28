@@ -309,3 +309,45 @@ def fetch_seatalk_snapshot(date_str: str) -> Optional[list[dict]]:
         return None
     except Exception:
         return None
+
+
+def fetch_latest_seatalk_snapshot(from_date_str: str, max_days_back: int = 7) -> tuple[Optional[list[dict]], Optional[str]]:
+    """
+    Try from_date_str first, then scan backwards up to max_days_back days.
+    Returns (messages, date_str) of the most recent snapshot found, or (None, None).
+    """
+    from datetime import date, timedelta
+    import datetime as dt_mod
+
+    try:
+        start = date.fromisoformat(from_date_str)
+    except ValueError:
+        return None, None
+
+    try:
+        from upstash_redis import Redis
+        r = Redis(
+            url=os.environ["UPSTASH_REDIS_REST_URL"],
+            token=os.environ["UPSTASH_REDIS_REST_TOKEN"],
+        )
+    except Exception:
+        return None, None
+
+    for i in range(max_days_back + 1):
+        d = start - timedelta(days=i)
+        key = f"seatalk-snapshot:{d.isoformat()}"
+        try:
+            raw = r.get(key)
+            if raw is None:
+                continue
+            data = json.loads(raw) if isinstance(raw, str) else raw
+            if isinstance(data, list):
+                return data, d.isoformat()
+            if isinstance(data, dict):
+                msgs = data.get("messages", [])
+                if msgs is not None:
+                    return msgs, d.isoformat()
+        except Exception:
+            continue
+
+    return None, None

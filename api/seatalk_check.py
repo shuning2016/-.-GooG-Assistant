@@ -36,7 +36,7 @@ from http.server import BaseHTTPRequestHandler
 sys.path.insert(0, os.path.dirname(__file__))
 from _session import COOKIE_NAME, parse_cookies, verify_cookie
 from _seatalk import (
-    fetch_seatalk_snapshot, format_seatalk_payload, SEATALK_BRIEF_PROMPT,
+    fetch_seatalk_snapshot, fetch_latest_seatalk_snapshot, format_seatalk_payload, SEATALK_BRIEF_PROMPT,
     load_pending_items, format_pending_context,
 )
 
@@ -177,10 +177,14 @@ class handler(BaseHTTPRequestHandler):
                 return
 
         # ── Fetch snapshot from Redis (auto-refresh if missing) ───────────────
+        snapshot_date = date_str
         messages = fetch_seatalk_snapshot(date_str)
         if messages is None:
             # No pre-scheduled snapshot — try running the script on-demand
             messages = _try_run_snapshot(date_str)
+        if messages is None:
+            # Fall back to the most recent available snapshot (up to 7 days back)
+            messages, snapshot_date = fetch_latest_seatalk_snapshot(date_str)
         if messages is None:
             self._json(200, {
                 "ok": False,
@@ -195,7 +199,7 @@ class handler(BaseHTTPRequestHandler):
 
         # ── Generate summary and cache it ─────────────────────────────────────
         try:
-            summary = _generate(messages, date_str, now_sgt)
+            summary = _generate(messages, snapshot_date, now_sgt)
             _save_summary_cache(date_str, summary, len(messages), now_sgt)
             self._json(200, {
                 "ok": True,
@@ -204,6 +208,7 @@ class handler(BaseHTTPRequestHandler):
                 "generated_at": now_sgt.strftime("%H:%M SGT"),
                 "cached": False,
                 "age_min": 0,
+                "snapshot_date": snapshot_date,
             })
         except Exception as exc:
             self._json(500, {"ok": False, "error": str(exc), "message_count": len(messages)})
