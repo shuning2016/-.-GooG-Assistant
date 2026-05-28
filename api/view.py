@@ -325,6 +325,16 @@ def _render_html(briefing_md: str, date_str: str) -> str:
   .pr-ans-q{{font-size:.88rem;font-weight:600;color:var(--navy);margin-bottom:5px}}
   .pr-ans-a{{font-size:.87rem;color:#374151;line-height:1.6}}
   .pr-ans-empty{{font-size:.83rem;color:var(--muted);font-style:italic}}
+  /* Deck summary card */
+  .pr-summary-card{{background:#f8fafe;border-radius:10px;padding:16px 20px;margin-bottom:16px;border:1px solid #dbeafe;position:relative}}
+  .pr-summary-card .del-corner{{position:absolute;top:10px;right:10px;background:none;border:1px solid var(--border);border-radius:4px;padding:2px 8px;font-size:.73rem;cursor:pointer;color:var(--muted);font-family:inherit}}
+  .pr-summary-card .del-corner:hover{{border-color:var(--red);color:var(--red)}}
+  .pr-summary-hdr{{font-size:.8rem;font-weight:700;color:var(--teal);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;display:flex;align-items:center;gap:6px}}
+  .pr-summary-card p{{font-size:.87rem;color:#374151;margin:.25rem 0;line-height:1.6}}
+  .pr-summary-card ul{{padding-left:1.1rem;margin:.2rem 0 .5rem}}
+  .pr-summary-card li{{font-size:.87rem;color:#374151;margin:.2rem 0;line-height:1.55}}
+  .pr-summary-card strong{{color:var(--navy);font-weight:700}}
+  .pr-summary-card hr{{border:none;border-top:1px solid var(--border);margin:.6rem 0}}
 
   /* ── Reason modal ── */
   .modal-overlay{{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:500;display:flex;align-items:center;justify-content:center;padding:20px}}
@@ -493,6 +503,42 @@ var _PAGE_DATE = {json.dumps(date_str)};
 // ── Utilities ─────────────────────────────────────────────────────────────────
 function escHtml(s) {{
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}}
+
+function mdToHtml(raw) {{
+  // Convert basic markdown to HTML for display in the summary card.
+  // Handles: **bold**, bullet lists (- item), blank-line paragraphs, --- hr.
+  var lines = String(raw)
+    .replace(/^\[DECK SUMMARY\]\s*/i, '')  // strip storage prefix
+    .split('\n');
+  var out = '';
+  var inList = false;
+
+  lines.forEach(function(line) {{
+    var trimmed = line.trim();
+    // Horizontal rule
+    if (trimmed === '---') {{
+      if (inList) {{ out += '</ul>'; inList = false; }}
+      out += '<hr>';
+      return;
+    }}
+    // Bullet list item
+    if (trimmed.startsWith('- ') && trimmed.length > 2) {{
+      if (!inList) {{ out += '<ul>'; inList = true; }}
+      var content = trimmed.slice(2).replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+      out += '<li>' + content + '</li>';
+      return;
+    }}
+    // Close list before non-bullet content
+    if (inList) {{ out += '</ul>'; inList = false; }}
+    // Empty line
+    if (!trimmed) return;
+    // Normal paragraph line — convert **bold**
+    var para = trimmed.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+    out += '<p>' + para + '</p>';
+  }});
+  if (inList) out += '</ul>';
+  return out;
 }}
 function _sgtNow() {{
   var sgt = new Date(Date.now() + 8 * 3600000);
@@ -944,19 +990,16 @@ function _renderPrereads(items) {{
         + escHtml(pdfName) + '</div>';
     }}
 
-    // Summary row — shown above the toggle, always visible
+    // Summary card — formatted markdown, shown above the Questions/Answers toggle
     var summaryItem = null;
     qs.forEach(function(x) {{ if (x.slide_ref === 'Summary') summaryItem = x; }});
     if (summaryItem) {{
-      html += '<div class="pr-q-row" id="pr-row-' + escHtml(summaryItem.id) + '"'
-        + ' style="background:#f3f4f6;border-radius:8px;padding:10px 14px;margin-bottom:16px;'
-        + 'border-bottom:none;align-items:flex-start">'
-        + '<span class="pr-slide-ref pr-summary">Summary</span>'
-        + '<span class="pr-q-text pr-is-summary" style="flex:1">' + escHtml(summaryItem.question || '') + '</span>'
-        + '<div class="pr-actions">'
-        + '<button class="pr-del-btn" data-id="' + escHtml(summaryItem.id) + '"'
-        +   ' data-pdf="' + escHtml(pdfName) + '" onclick="openDeleteModal(this)">&#10005;</button>'
-        + '</div></div>';
+      html += '<div class="pr-summary-card" id="pr-row-' + escHtml(summaryItem.id) + '">'
+        + '<div class="pr-summary-hdr">&#128204; Deck Summary</div>'
+        + '<button class="del-corner" data-id="' + escHtml(summaryItem.id) + '"'
+        +   ' data-pdf="' + escHtml(pdfName) + '" onclick="openDeleteModal(this)">&#10005; Remove</button>'
+        + mdToHtml(summaryItem.question || '')
+        + '</div>';
     }}
 
     // View toggle — use data-sid/data-view to avoid quoting issues in onclick
