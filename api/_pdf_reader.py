@@ -197,7 +197,16 @@ def _parse_questions(raw_text: str, pdf_name: str, today_str: str) -> list[dict]
         deck_summary = summary_match.group(1).strip()
 
     # Parse slide sections — sections start with "Slide N" or "Others"
+    # Handles multi-line questions: continuation lines (not starting with "-" or
+    # a slide header) are appended to the previous question.
     current_slide = "General"
+    pending: dict | None = None  # question being accumulated
+
+    def _flush(pending_item: dict | None) -> None:
+        if pending_item and len(pending_item["question"]) > 3:
+            pending_item["question"] = pending_item["question"].strip()
+            items.append(pending_item)
+
     for line in ian_block.split("\n"):
         line_stripped = line.strip()
         if not line_stripped or line_stripped.lower() in ("thanks.", "thanks"):
@@ -206,15 +215,18 @@ def _parse_questions(raw_text: str, pdf_name: str, today_str: str) -> list[dict]
         # Section header: "Slide N" or "Others"
         slide_header = re.match(r"^(Slide\s+\d+|Others)$", line_stripped, re.IGNORECASE)
         if slide_header:
+            _flush(pending)
+            pending = None
             current_slide = slide_header.group(1).strip()
             continue
 
-        # Question bullet
+        # Question bullet — start a new question
         if line_stripped.startswith("-") and len(line_stripped) > 2:
+            _flush(pending)
             question_text = line_stripped.lstrip("- ").strip()
             if question_text and len(question_text) > 3:
                 item_id = f"qa-{pdf_name[:20].replace(' ', '-').lower()}-{int(time.time() * 1000)}-{len(items)}"
-                items.append({
+                pending = {
                     "id": item_id,
                     "pdf_name": pdf_name,
                     "question": question_text,
@@ -223,7 +235,16 @@ def _parse_questions(raw_text: str, pdf_name: str, today_str: str) -> list[dict]
                     "type": "generated",
                     "date": today_str,
                     "created_at": datetime.now(SGT).isoformat(),
-                })
+                }
+            else:
+                pending = None
+            continue
+
+        # Continuation line — append to the current pending question
+        if pending is not None:
+            pending["question"] += " " + line_stripped
+
+    _flush(pending)  # save the last question
 
     # If parsing failed to find structured output, extract all bullet points
     if not items:

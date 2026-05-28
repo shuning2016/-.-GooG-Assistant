@@ -70,19 +70,41 @@ def _is_key_domain(subject: str, snippet: str) -> bool:
 
 _PREREREAD_MARKERS = ("[pre-read]", "[pre read]", "[preread]", "pre-read:", "pre read:")
 
+# Keywords that indicate a periodic (weekly/monthly) team email likely to have a PDF deck
+_PERIODIC_KEYWORDS = (
+    "weekly", "bi-weekly", "biweekly", "bi weekly",
+    "monthly", "fortnightly", "quarterly",
+    "update", "sync", "catch-up", "catchup", "check-in",
+)
+
 
 def _is_prereread(subject: str) -> bool:
-    """Return True if this is a pre-meeting pre-read/agenda email (NOT a reply to one).
+    """Return True if this is a title-marked pre-read email (NOT a reply).
 
     Reply emails (RE:/FWD: prefix) are NOT considered pre-reads — they may be
     post-meeting recap emails sent in the same thread and can contain action items.
     """
     s = subject.strip()
-    # Replies and forwards are NOT pre-reads
     if re.match(r"^(re:|fwd?:)\s*", s, re.IGNORECASE):
         return False
     s_lower = s.lower()
     return any(s_lower.startswith(m) for m in _PREREREAD_MARKERS)
+
+
+def _is_domain_periodic(subject: str) -> bool:
+    """Return True if this is a key-domain periodic email that likely has a PDF deck.
+
+    Catches emails like "Swarm weekly update 0528", "SIP monthly meeting May",
+    "BPM bi-weekly sync" — even when not labelled [pre-read].
+    Must be NOT a reply/forward, AND mention both a periodic keyword and a key domain.
+    """
+    s = subject.strip()
+    if re.match(r"^(re:|fwd?:)\s*", s, re.IGNORECASE):
+        return False
+    s_lower = s.lower()
+    has_periodic = any(kw in s_lower for kw in _PERIODIC_KEYWORDS)
+    has_domain = _is_key_domain(s_lower, "")
+    return has_periodic and has_domain
 
 
 def _extract_plain_body(payload: dict, max_chars: int = 3000) -> str:
@@ -226,11 +248,16 @@ def fetch_gmail(service, since: datetime) -> list[dict]:
         snippet = meta.get("snippet", "")
 
         is_prereread = _is_prereread(subject)
+        # is_pdf_source: also extract PDFs from key-domain periodic emails
+        # (e.g. "Swarm weekly update 0528") even without a [pre-read] label.
+        # Kept separate from is_prereread so action items can still be extracted
+        # from these periodic emails (is_prereread=False → action items allowed).
+        is_pdf_source = is_prereread or _is_domain_periodic(subject)
         body_text = ""
         images: list[dict] = []
         pdf_attachments: list[dict] = []
-        if _is_key_domain(subject, snippet) or is_prereread:
-            # Second pass: full body + image/PDF attachments for key-domain and pre-read emails
+        if _is_key_domain(subject, snippet) or is_pdf_source:
+            # Second pass: full body + image/PDF attachments
             try:
                 full = service.users().messages().get(
                     userId="me",
@@ -240,8 +267,8 @@ def fetch_gmail(service, since: datetime) -> list[dict]:
                 full_payload = full.get("payload", {})
                 body_text = _extract_plain_body(full_payload)
                 images = _extract_images(full_payload, service, m["id"])
-                if is_prereread:
-                    # Extract PDF metadata for pre-read emails (for the Q&A tab)
+                if is_pdf_source:
+                    # Extract PDF metadata for the Q&A tab
                     pdf_attachments = _extract_pdf_attachments(full_payload)
             except Exception:
                 pass  # Fall back to snippet if full fetch fails
@@ -257,6 +284,7 @@ def fetch_gmail(service, since: datetime) -> list[dict]:
                 "date": h.get("Date", ""),
                 "snippet": snippet,
                 "is_prereread": is_prereread,
+                "is_pdf_source": is_pdf_source,
                 "body": body_text,
                 "images": images,  # image attachments for Claude Vision (key-domain only)
                 "pdf_attachments": pdf_attachments,  # PDF metadata for pre-read Q&A
@@ -823,10 +851,11 @@ def _run_pdf_qa(gmail_svc, emails: list[dict], today_str: str, r) -> None:
     except Exception:
         return
 
-    # Collect pre-read emails that have PDF attachments
+    # Collect emails marked as PDF sources (title-marked pre-reads OR
+    # key-domain periodic emails like "Swarm weekly update") that have PDFs
     prereads_with_pdfs = [
         e for e in emails
-        if e.get("is_prereread") and e.get("pdf_attachments")
+        if e.get("is_pdf_source") and e.get("pdf_attachments")
     ]
 
     processed_pdfs: set[str] = set()  # avoid duplicates across emails
