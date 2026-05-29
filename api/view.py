@@ -236,6 +236,12 @@ def _render_html(briefing_md: str, date_str: str) -> str:
   }}
   .ai-cancel-btn:hover{{background:#f3f4f6}}
   .ai-pic{{font-size:.8rem;color:var(--teal);font-weight:600}}
+  .pr-date-picker{{
+    border:1px solid #c7d0e8;border-radius:6px;padding:5px 9px;
+    font-size:.82rem;font-family:inherit;color:var(--text);background:#fff;
+    cursor:pointer;
+  }}
+  .pr-date-picker:focus{{outline:2px solid var(--teal);border-color:var(--teal)}}
   .ai-empty{{color:var(--muted);padding:32px 0;text-align:center;font-size:.92rem}}
   .loading-msg{{color:var(--muted);font-size:.9rem;padding:20px 0}}
 
@@ -506,10 +512,11 @@ def _render_html(briefing_md: str, date_str: str) -> str:
       <div class="panel-header">
         <span class="panel-title">&#128214; Pre-read Q&amp;A</span>
         <span id="prTimestamp" class="meta-time"></span>
+        <input type="date" id="prDatePicker" class="pr-date-picker" onchange="_prDateChanged(this.value)">
         <button class="refresh-btn" id="prRefreshBtn" onclick="_fetchPrereads()">&#8635; Refresh</button>
       </div>
       <p style="font-size:.82rem;color:var(--muted);margin-bottom:18px;line-height:1.55">
-        Predicted questions Ian Ho would ask based on today&#39;s pre-read PDF decks.
+        Predicted questions Ian Ho would ask based on the pre-read PDF decks.
         Generated automatically during the daily brief.
         You can <strong>edit</strong>, <strong>delete</strong>, or <strong>add</strong> questions — all changes are logged for prompt improvement.
       </p>
@@ -1004,18 +1011,26 @@ function tagPriorities(root) {{
 // ── Pre-reads ─────────────────────────────────────────────────────────────────
 var _prFetching = false;
 var _reasonAction = null;
+var _prDate = _PAGE_DATE;  // currently-viewed pre-read date; changed by date picker
+
+function _prDateChanged(val) {{
+  if (!val) return;
+  _prDate = val;
+  _fetchPrereads();
+}}
 
 function _fetchPrereads() {{
   if (_prFetching) return;
   _prFetching = true;
   var btn = document.getElementById('prRefreshBtn');
   if (btn) {{ btn.disabled = true; btn.textContent = 'Loading…'; }}
-  fetch('/api/pdf_qa?date=' + encodeURIComponent(_PAGE_DATE))
+  fetch('/api/pdf_qa?date=' + encodeURIComponent(_prDate))
     .then(function(r) {{ return r.json(); }})
     .then(function(d) {{
       _prFetching = false;
       if (btn) {{ btn.disabled = false; btn.innerHTML = '&#8635; Refresh'; }}
-      document.getElementById('prTimestamp').textContent = 'Updated ' + _sgtNow();
+      var dateLabel = (_prDate !== _PAGE_DATE) ? ' · ' + _prDate : '';
+      document.getElementById('prTimestamp').textContent = 'Updated ' + _sgtNow() + dateLabel;
       _renderPrereads(d.items || []);
     }})
     .catch(function(err) {{
@@ -1059,7 +1074,7 @@ function _renderPrereads(items) {{
 
   if (!items || items.length === 0) {{
     document.getElementById('prContent').innerHTML =
-      '<p class="ai-empty">No pre-read Q&amp;A for ' + escHtml(_PAGE_DATE) + '.<br>'
+      '<p class="ai-empty">No pre-read Q&amp;A for ' + escHtml(_prDate) + '.<br>'
       + '<span style="font-size:.82rem;color:var(--muted)">Q&amp;A is generated automatically during the daily brief when pre-read emails have PDF attachments.</span></p>';
     return;
   }}
@@ -1196,7 +1211,7 @@ function _renderPrereads(items) {{
 
 // ── Reason modal ───────────────────────────────────────────────────────────────
 function openDeleteModal(btn) {{
-  _reasonAction = {{type:'delete', id:btn.dataset.id, pdf:btn.dataset.pdf, date:_PAGE_DATE}};
+  _reasonAction = {{type:'delete', id:btn.dataset.id, pdf:btn.dataset.pdf, date:_prDate}};
   document.getElementById('reasonModalTitle').textContent = 'Why are you deleting this question?';
   document.getElementById('editQuestionWrap').style.display = 'none';
   document.getElementById('editQuestionText').value = '';
@@ -1207,7 +1222,7 @@ function openDeleteModal(btn) {{
 }}
 
 function openEditModal(btn) {{
-  _reasonAction = {{type:'edit', id:btn.dataset.id, pdf:btn.dataset.pdf, date:_PAGE_DATE}};
+  _reasonAction = {{type:'edit', id:btn.dataset.id, pdf:btn.dataset.pdf, date:_prDate}};
   document.getElementById('reasonModalTitle').textContent = 'Why are you editing this question?';
   document.getElementById('editQuestionWrap').style.display = 'block';
   document.getElementById('editQuestionText').value = btn.dataset.q || '';
@@ -1299,7 +1314,7 @@ function addQuestion(btn) {{
   fetch('/api/pdf_qa', {{
     method: 'PUT',
     headers: {{'Content-Type': 'application/json'}},
-    body: JSON.stringify({{question: question, pdf_name: pdfName, date: _PAGE_DATE}})
+    body: JSON.stringify({{question: question, pdf_name: pdfName, date: _prDate}})
   }})
   .then(function(r) {{ return r.json(); }})
   .then(function(d) {{
@@ -1322,6 +1337,10 @@ function addQuestion(btn) {{
 
 // ── Briefing tab init ──────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', function() {{
+
+  // Initialise pre-reads date picker to current page date
+  var dp = document.getElementById('prDatePicker');
+  if (dp) dp.value = _PAGE_DATE;
 
   // P0/P1/P2 badges on briefing body
   document.querySelectorAll('.card li').forEach(function(li) {{
