@@ -182,6 +182,7 @@ def _render_html(briefing_md: str, date_str: str) -> str:
   .f-action{{flex:1;min-width:220px}}
   .f-eta{{width:148px}}
   .f-urgency{{width:132px}}
+  .f-pic{{width:130px}}
   .f-source{{width:178px}}
   .cancel-btn{{
     background:none;border:1px solid var(--border);border-radius:6px;
@@ -206,14 +207,35 @@ def _render_html(briefing_md: str, date_str: str) -> str:
     border:1px solid #bae6fd;border-radius:3px;font-size:.65rem;
     font-weight:700;padding:1px 5px;margin-left:5px;vertical-align:middle;
   }}
-  .ai-done-btn{{
+  .ai-done-btn,.ai-edit-btn{{
     background:none;border:1px solid #d1d5db;color:#6b7280;
     border-radius:4px;padding:3px 10px;font-size:.75rem;cursor:pointer;
     transition:all .15s;white-space:nowrap;font-family:inherit;
   }}
   .ai-done-btn:hover{{background:var(--green);color:#fff;border-color:var(--green)}}
-  .ai-done-btn:disabled{{opacity:.4;cursor:default}}
+  .ai-edit-btn:hover{{background:var(--teal);color:#fff;border-color:var(--teal)}}
+  .ai-done-btn:disabled,.ai-edit-btn:disabled{{opacity:.4;cursor:default}}
   .ai-row-done td{{opacity:.38;text-decoration:line-through}}
+  .ai-row-editing td{{background:#fffbeb!important;outline:2px solid var(--amber);outline-offset:-1px}}
+  .ai-edit-input{{
+    width:100%;border:1px solid #c7d0e8;border-radius:5px;padding:4px 7px;
+    font-size:.85rem;font-family:inherit;background:#fff;color:var(--text);
+    box-sizing:border-box;
+  }}
+  .ai-edit-input:focus{{outline:2px solid var(--teal);border-color:var(--teal)}}
+  .ai-save-btn{{
+    background:var(--teal);color:#fff;border:1px solid var(--teal);
+    border-radius:4px;padding:3px 10px;font-size:.75rem;cursor:pointer;
+    white-space:nowrap;font-family:inherit;margin-right:4px;
+  }}
+  .ai-save-btn:hover{{opacity:.85}}
+  .ai-cancel-btn{{
+    background:none;border:1px solid #d1d5db;color:#6b7280;
+    border-radius:4px;padding:3px 8px;font-size:.75rem;cursor:pointer;
+    white-space:nowrap;font-family:inherit;
+  }}
+  .ai-cancel-btn:hover{{background:#f3f4f6}}
+  .ai-pic{{font-size:.8rem;color:var(--teal);font-weight:600}}
   .ai-empty{{color:var(--muted);padding:32px 0;text-align:center;font-size:.92rem}}
   .loading-msg{{color:var(--muted);font-size:.9rem;padding:20px 0}}
 
@@ -361,7 +383,7 @@ def _render_html(briefing_md: str, date_str: str) -> str:
     .navbar-tz,.navbar-date{{display:none}}
     .tab-btn{{padding:12px 14px 10px;font-size:.82rem}}
     .add-form-row{{flex-direction:column}}
-    .f-action,.f-eta,.f-urgency,.f-source{{width:100%!important;min-width:0!important}}
+    .f-action,.f-eta,.f-urgency,.f-pic,.f-source{{width:100%!important;min-width:0!important}}
   }}
 </style>
 </head>
@@ -450,6 +472,7 @@ def _render_html(briefing_md: str, date_str: str) -> str:
               <option value="medium">&#128992; Medium</option>
               <option value="low">&#128994; Low</option>
             </select>
+            <input type="text" id="newPic" class="f-pic" placeholder="PIC (optional)">
             <input type="text" id="newSource" class="f-source" placeholder="Source / context (optional)">
             <button type="submit" class="add-btn" id="addSubmitBtn">Add</button>
             <button type="button" class="cancel-btn" onclick="toggleAddForm()">Cancel</button>
@@ -660,11 +683,12 @@ function _renderActionItems(items) {{
   var html = '<table class="ai-table"><thead><tr>'
     + '<th style="width:32px"></th>'
     + '<th>Action</th>'
-    + '<th style="width:195px">Source</th>'
+    + '<th style="width:110px">PIC</th>'
+    + '<th style="width:175px">Source</th>'
     + '<th style="width:88px">Identified</th>'
     + '<th style="width:115px">ETA</th>'
     + '<th style="width:96px">Chase?</th>'
-    + '<th style="width:75px"></th>'
+    + '<th style="width:100px"></th>'
     + '</tr></thead><tbody>';
 
   open.forEach(function(item) {{
@@ -682,14 +706,24 @@ function _renderActionItems(items) {{
       srcText = 'Email: ' + escHtml(item.source || '');
     }}
 
-    html += '<tr id="ai-row-' + escHtml(item.id) + '"' + rowClass + '>'
+    html += '<tr id="ai-row-' + escHtml(item.id) + '"' + rowClass
+      + ' data-id="' + escHtml(item.id) + '"'
+      + ' data-action="' + escHtml(item.action || '') + '"'
+      + ' data-pic="' + escHtml(item.pic || '') + '"'
+      + ' data-eta="' + escHtml(item.eta || '') + '"'
+      + ' data-urgency="' + escHtml(item.urgency || '') + '"'
+      + '>'
       + '<td><span title="' + escHtml(LABEL[c] || '') + '" style="font-size:1.1rem">' + c + '</span></td>'
       + '<td>' + escHtml(item.action || '') + '</td>'
+      + '<td class="ai-pic">' + escHtml(item.pic || '—') + '</td>'
       + '<td style="font-size:.8rem;color:var(--muted)">' + srcText + '</td>'
       + '<td style="font-size:.8rem;color:var(--muted);white-space:nowrap">' + fmtDate(item.date_identified) + '</td>'
       + '<td>' + fmtEta(item.eta, today) + '</td>'
       + '<td style="white-space:nowrap;color:' + (COLOR[c] || '#6b7280') + ';font-size:.82rem;font-weight:600">' + escHtml(LABEL[c] || '') + '</td>'
-      + '<td><button class="ai-done-btn" data-id="' + escHtml(item.id) + '" onclick="markDone(this.dataset.id,this)">✓ Done</button></td>'
+      + '<td style="white-space:nowrap">'
+      + '<button class="ai-edit-btn" data-id="' + escHtml(item.id) + '" onclick="startEditItem(this)">&#9998;</button> '
+      + '<button class="ai-done-btn" data-id="' + escHtml(item.id) + '" onclick="markDone(this.dataset.id,this)">✓</button>'
+      + '</td>'
       + '</tr>';
   }});
 
@@ -734,6 +768,83 @@ function markDone(id, btn) {{
     }});
 }}
 
+// ── Inline row editing ────────────────────────────────────────────────────────
+function startEditItem(btn) {{
+  var row = btn.closest ? btn.closest('tr') : btn.parentNode.parentNode;
+  if (!row || row.classList.contains('ai-row-editing')) return;
+  row.classList.add('ai-row-editing');
+  var id      = row.dataset.id;
+  var action  = row.dataset.action || '';
+  var pic     = row.dataset.pic || '';
+  var eta     = row.dataset.eta || '';
+  var urgency = row.dataset.urgency || '';
+
+  // Save original HTML to restore on cancel
+  row.dataset.origHtml = row.innerHTML;
+
+  // Replace cells: [emoji][action][pic][source][identified][eta][chase][btns]
+  var cells = row.querySelectorAll('td');
+  // action (index 1)
+  cells[1].innerHTML = '<input class="ai-edit-input" id="ei-action-' + escHtml(id) + '" value="' + escHtml(action) + '" placeholder="Action">';
+  // pic (index 2)
+  cells[2].innerHTML = '<input class="ai-edit-input" id="ei-pic-' + escHtml(id) + '" value="' + escHtml(pic) + '" placeholder="PIC">';
+  // eta (index 4 — source=3, identified=4... recount)
+  // cells order: 0=emoji 1=action 2=pic 3=source 4=identified 5=eta 6=chase 7=btns
+  cells[5].innerHTML = '<input class="ai-edit-input f-eta" type="date" id="ei-eta-' + escHtml(id) + '" value="' + escHtml(eta) + '">';
+  // urgency (chase col, index 6)
+  cells[6].innerHTML = '<select class="ai-edit-input" id="ei-urgency-' + escHtml(id) + '">'
+    + '<option value="">—</option>'
+    + '<option value="high"' + (urgency==='high'?' selected':'') + '>🔴 High</option>'
+    + '<option value="medium"' + (urgency==='medium'?' selected':'') + '>🟠 Medium</option>'
+    + '<option value="low"' + (urgency==='low'?' selected':'') + '>🟢 Low</option>'
+    + '</select>';
+  // buttons (index 7)
+  cells[7].innerHTML = '<button class="ai-save-btn" onclick="saveEditItem(' + JSON.stringify(id) + ',this)">Save</button>'
+    + '<button class="ai-cancel-btn" onclick="cancelEditItem(' + JSON.stringify(id) + ')">✕</button>';
+
+  cells[1].querySelector('input').focus();
+}}
+
+function cancelEditItem(id) {{
+  var row = document.getElementById('ai-row-' + id);
+  if (!row) return;
+  row.classList.remove('ai-row-editing');
+  row.innerHTML = row.dataset.origHtml || '';
+}}
+
+function saveEditItem(id, btn) {{
+  btn.disabled = true;
+  btn.textContent = 'Saving…';
+  var action  = (document.getElementById('ei-action-'  + id) || {{}}).value || '';
+  var pic     = (document.getElementById('ei-pic-'     + id) || {{}}).value || '';
+  var eta     = (document.getElementById('ei-eta-'     + id) || {{}}).value || null;
+  var urgency = (document.getElementById('ei-urgency-' + id) || {{}}).value || null;
+  if (!action.trim()) {{ alert('Action cannot be empty.'); btn.disabled=false; btn.textContent='Save'; return; }}
+  fetch('/api/action_items?id=' + encodeURIComponent(id), {{
+    method: 'PATCH',
+    headers: {{'Content-Type':'application/json'}},
+    body: JSON.stringify({{
+      action: action.trim(),
+      pic: pic.trim() || null,
+      eta: eta || null,
+      urgency: urgency || null
+    }})
+  }})
+  .then(function(r) {{ return r.json(); }})
+  .then(function(d) {{
+    if (d.ok) {{
+      _fetchActionItems();
+    }} else {{
+      btn.disabled = false; btn.textContent = 'Save';
+      alert('Error: ' + (d.error || 'unknown'));
+    }}
+  }})
+  .catch(function(err) {{
+    btn.disabled = false; btn.textContent = 'Save';
+    alert('Failed: ' + String(err));
+  }});
+}}
+
 function toggleAddForm() {{
   _addFormOpen = !_addFormOpen;
   document.getElementById('addFormWrap').hidden = !_addFormOpen;
@@ -755,10 +866,11 @@ function submitAddItem(e) {{
   btn.disabled = true;
   btn.textContent = 'Adding…';
 
+  var pic = (document.getElementById('newPic').value || '').trim() || null;
   fetch('/api/action_items', {{
     method: 'PUT',
     headers: {{'Content-Type': 'application/json'}},
-    body: JSON.stringify({{action: action, eta: eta, urgency: urgency, source: source}})
+    body: JSON.stringify({{action: action, eta: eta, urgency: urgency, pic: pic, source: source}})
   }})
     .then(function(r) {{ return r.json(); }})
     .then(function(d) {{
@@ -768,6 +880,7 @@ function submitAddItem(e) {{
         document.getElementById('newAction').value = '';
         document.getElementById('newEta').value = '';
         document.getElementById('newUrgency').value = '';
+        document.getElementById('newPic').value = '';
         document.getElementById('newSource').value = '';
         toggleAddForm();
         _fetchActionItems();

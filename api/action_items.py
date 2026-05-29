@@ -103,6 +103,8 @@ class handler(BaseHTTPRequestHandler):
         eta_raw = str(data.get("eta") or "").strip() or None
         urgency_raw = str(data.get("urgency") or "").strip() or None
 
+        pic_raw = str(data.get("pic") or "").strip() or None
+
         new_item = {
             "id": item_id,
             "source": source_raw if source_raw else "Manual entry",
@@ -111,6 +113,7 @@ class handler(BaseHTTPRequestHandler):
             "action": action,
             "eta": eta_raw,
             "urgency": urgency_raw,
+            "pic": pic_raw,
             "done": False,
         }
 
@@ -120,6 +123,52 @@ class handler(BaseHTTPRequestHandler):
             items.append(new_item)
             _save_items(r, items)
             self._json(201, {"ok": True, "item": new_item})
+        except Exception as exc:
+            self._json(500, {"error": str(exc)})
+
+    def do_PATCH(self):
+        """Edit an existing action item's action, pic, eta, and/or urgency."""
+        if not self._auth():
+            return
+        parsed = urlparse(self.path)
+        params = parse_qs(parsed.query)
+        item_id = params.get("id", [None])[0]
+        if not item_id:
+            self._json(400, {"error": "Missing id parameter"})
+            return
+        try:
+            length = int(self.headers.get("Content-Length", 0))
+            raw = self.rfile.read(length)
+            data = json.loads(raw.decode("utf-8"))
+        except Exception:
+            self._json(400, {"error": "Invalid JSON body"})
+            return
+
+        action  = str(data.get("action") or "").strip() or None
+        pic     = str(data.get("pic") or "").strip() or None
+        eta     = str(data.get("eta") or "").strip() or None
+        urgency = str(data.get("urgency") or "").strip() or None
+
+        try:
+            r = _redis()
+            items = _load_items(r)
+            updated = None
+            for item in items:
+                if item.get("id") == item_id:
+                    if action:
+                        item["action"] = action
+                    item["pic"] = pic
+                    if "eta" in data:
+                        item["eta"] = eta
+                    if "urgency" in data:
+                        item["urgency"] = urgency
+                    updated = item
+                    break
+            if updated is None:
+                self._json(404, {"error": f"Item not found: {item_id}"})
+                return
+            _save_items(r, items)
+            self._json(200, {"ok": True, "item": updated})
         except Exception as exc:
             self._json(500, {"error": str(exc)})
 
