@@ -805,9 +805,9 @@ function startEditItem(btn) {{
     + '<option value="medium"' + (urgency==='medium'?' selected':'') + '>🟠 Medium</option>'
     + '<option value="low"' + (urgency==='low'?' selected':'') + '>🟢 Low</option>'
     + '</select>';
-  // buttons (index 7)
-  cells[7].innerHTML = '<button class="ai-save-btn" onclick="saveEditItem(' + JSON.stringify(id) + ',this)">Save</button>'
-    + '<button class="ai-cancel-btn" onclick="cancelEditItem(' + JSON.stringify(id) + ')">✕</button>';
+  // buttons (index 7) — use data-id to avoid quoting issues in onclick
+  cells[7].innerHTML = '<button class="ai-save-btn" data-id="' + escHtml(id) + '" onclick="saveEditItem(this.dataset.id,this)">Save</button>'
+    + ' <button class="ai-cancel-btn" data-id="' + escHtml(id) + '" onclick="cancelEditItem(this.dataset.id)">✕</button>';
 
   cells[1].querySelector('input').focus();
 }}
