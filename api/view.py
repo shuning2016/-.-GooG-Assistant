@@ -171,19 +171,20 @@ def _render_html(briefing_md: str, date_str: str) -> str:
   .add-form-row{{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}}
   .add-form-row input[type=text],
   .add-form-row input[type=date],
-  .add-form-row select {{
+  .add-form-row select,
+  .add-form-row textarea {{
     border:1px solid #c7d0e8;border-radius:6px;padding:7px 10px;
     font-size:.88rem;font-family:inherit;background:#fff;color:var(--text);
     transition:border-color .15s;
   }}
-  .add-form-row input:focus,.add-form-row select:focus{{
+  .add-form-row input:focus,.add-form-row select:focus,.add-form-row textarea:focus{{
     outline:2px solid var(--teal);border-color:var(--teal);
   }}
-  .f-action{{flex:1;min-width:220px}}
+  .f-action{{width:100%;min-width:220px;resize:vertical;min-height:60px;line-height:1.4}}
   .f-eta{{width:148px}}
   .f-urgency{{width:132px}}
   .f-pic{{width:130px}}
-  .f-source{{width:178px}}
+  .f-source{{width:220px}}
   .cancel-btn{{
     background:none;border:1px solid var(--border);border-radius:6px;
     padding:7px 14px;font-size:.82rem;cursor:pointer;color:var(--muted);
@@ -469,19 +470,21 @@ def _render_html(briefing_md: str, date_str: str) -> str:
       <div id="addFormWrap" hidden>
         <form class="add-form-wrap" onsubmit="submitAddItem(event)">
           <div class="add-form-title">&#128221; New Action Item</div>
-          <div class="add-form-row">
-            <input type="text" id="newAction" class="f-action" placeholder="Action description (required)" required>
-            <input type="date" id="newEta" class="f-eta" title="ETA (optional)">
-            <select id="newUrgency" class="f-urgency">
-              <option value="">Urgency</option>
-              <option value="high">&#128308; High</option>
-              <option value="medium">&#128992; Medium</option>
-              <option value="low">&#128994; Low</option>
-            </select>
-            <input type="text" id="newPic" class="f-pic" placeholder="PIC (optional)">
-            <input type="text" id="newSource" class="f-source" placeholder="Source / context (optional)">
-            <button type="submit" class="add-btn" id="addSubmitBtn">Add</button>
-            <button type="button" class="cancel-btn" onclick="toggleAddForm()">Cancel</button>
+          <div class="add-form-row" style="flex-direction:column;gap:10px">
+            <textarea id="newAction" class="f-action" placeholder="Action description (required)" required></textarea>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+              <input type="date" id="newEta" class="f-eta" title="ETA (optional)">
+              <select id="newUrgency" class="f-urgency">
+                <option value="">Urgency</option>
+                <option value="high">&#128308; High</option>
+                <option value="medium">&#128992; Medium</option>
+                <option value="low">&#128994; Low</option>
+              </select>
+              <input type="text" id="newPic" class="f-pic" placeholder="PIC (optional)">
+              <input type="text" id="newSource" class="f-source" placeholder="Manual entry / email title / SeaTalk group">
+              <button type="submit" class="add-btn" id="addSubmitBtn">Add</button>
+              <button type="button" class="cancel-btn" onclick="toggleAddForm()">Cancel</button>
+            </div>
           </div>
         </form>
       </div>
@@ -705,12 +708,12 @@ function _renderActionItems(items) {{
 
     var srcText;
     if (isManual) {{
-      srcText = escHtml(item.source || 'Manual entry')
+      srcText = escHtml(item.source || '')
         + '<span class="manual-badge">Manual</span>';
     }} else if (item.source_type === 'seatalk') {{
-      srcText = 'SeaTalk: ' + escHtml(item.source || '');
+      srcText = escHtml(item.source || '');
     }} else {{
-      srcText = 'Email: ' + escHtml(item.source || '');
+      srcText = escHtml(item.source || '');
     }}
 
     html += '<tr id="ai-row-' + escHtml(item.id) + '"' + rowClass
