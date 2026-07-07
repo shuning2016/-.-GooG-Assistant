@@ -78,34 +78,40 @@ Treat these senders as VIPs:
 - fengc@sea.com
 
 ## Key domains
-These are the five key domains. Any email or meeting that touches one or more of these domains is treated as domain-relevant:
+These domains determine priority. Any email or meeting touching one or more of these is domain-relevant.
+
+### P0 domains — escalate immediately
+- **AI** — anything related to AI, artificial intelligence, LLMs, large language models, machine learning, AI strategy, or AI products
+- **BPM** — anything related to BPM, business process management, or system/BPM workflows
+
+### P1 domains — handle within 48 hours
 - **Swarm** — anything related to Swarm or OSP
 - **SIP** — anything related to SIP
 - **FP&A** — anything related to FP&A, financial planning, or financial analysis
 - **Budget** — anything related to budget planning, budget review, or budget allocation
-- **BPM** — anything related to BPM, business process management, or system/BPM workflows
 
 ## Important topics
-Treat these topics as Important Topics (same as key domains above):
-- Swarm or any emails/meetings related to OSP
-- SIP
-- FP&A or financial planning and analysis
-- Budget planning, review, or allocation
-- BPM or any emails related to system, BPM
+- AI or artificial intelligence, LLMs, machine learning, AI strategy (P0)
+- BPM or any emails related to system, BPM (P0)
+- Swarm or any emails/meetings related to OSP (P1)
+- SIP (P1)
+- FP&A or financial planning and analysis (P1)
+- Budget planning, review, or allocation (P1)
 
 ## Email triage rules
 Apply the key domains list and VIP list to classify every email.
 
 ### Super important (P0) — escalate immediately
 An email is P0 when **any** of these are true:
-- The subject, body, **or thread context** is related to a key domain (Swarm/OSP, SIP, FP&A, Budget, BPM) — check the full thread, not just the subject line
+- The subject, body, **or thread context** is related to a **P0 domain** (AI, BPM) — check the full thread, not just the subject line
 - The subject contains `for your action` or the word `action` **and** Shuning is in `To:`
 - Shuning is specifically @-mentioned or directly addressed in `To:` (not only `Cc:`) with a direct ask **and** a VIP is the sender or has replied in the thread
 
-**VIP involvement alone — without key domain relevance and without a direct ask to Shuning — does not make an email P0. Treat it as P1 instead.**
+**VIP involvement alone — without P0 domain relevance and without a direct ask to Shuning — does not make an email P0. Treat it as P1 instead.**
 
 ### Important (P1) — handle within 48 hours
 An email is P1 when **any** of these are true:
+- The subject, body, **or thread context** is related to a **P1 domain** (Swarm/OSP, SIP, FP&A, Budget) — check the full thread, not just the subject line
 - It is from a VIP sender but has 10 or more recipients (large-group VIP message)
 - Shuning is in `To:` rather than only `Cc:` and the email asks a direct question or assigns an action
 - Shuning is addressed directly (`Hi Shuning`, `Shuning,`, `Hey Shuning`) and the email is not P0
@@ -136,13 +142,14 @@ Apply the key domains list and VIP list to classify every meeting.
 
 ### Super important meetings (P0)
 A meeting is P0 when **any** of these are true:
-- The title or description is related to a key domain (Swarm/OSP, SIP, FP&A, Budget, BPM) **and** Shuning has accepted the invite
+- The title or description is related to a **P0 domain** (AI, BPM) **and** Shuning has accepted the invite
 - Shuning is specifically asked to present, decide, or provide an update **and** a VIP is involved **and** Shuning has accepted the invite
 
-**A VIP attending or commenting on a meeting that is NOT related to any key domain is P1, not P0 — regardless of attendee count.**
+**A VIP attending or commenting on a meeting that is NOT related to a P0 domain is P1, not P0 — regardless of attendee count.**
 
 ### Important meetings (P1)
 A meeting is P1 when **any** of these are true (and not already P0):
+- The title or description is related to a **P1 domain** (Swarm/OSP, SIP, FP&A, Budget) **and** Shuning has accepted the invite
 - Organizer or attendee includes a VIP with 10 or more attendees **and** Shuning has accepted the invite
 - External participants are involved **and** Shuning has accepted the invite
 - The title or description signals a decision, review, escalation, interview, travel, contract, hiring, or action item **and** Shuning has accepted the invite
@@ -168,7 +175,7 @@ For daily briefings, always review:
 - Extended prep lead time: 60 minutes before a high-stakes meeting
 - Do not flag meeting overlaps or missing transit buffers; Shuning handles scheduling herself
 - **Only generate prep recommendations for meetings Shuning has accepted.** If RSVP is declined or not responded, do not generate any prep action.
-- When summarizing pre-reads or VIP commentary for a meeting, only include content within Shuning's five key domains (Swarm/OSP, SIP, FP&A, Budget, BPM). Do not pull in VIP feedback on unrelated topics or other teams' domains.
+- When summarizing pre-reads or VIP commentary for a meeting, only include content within Shuning's key domains (AI, BPM, Swarm/OSP, SIP, FP&A, Budget). Do not pull in VIP feedback on unrelated topics or other teams' domains.
 
 ## Daily briefing output standard
 Every daily briefing should follow this structure:
@@ -179,7 +186,7 @@ Every daily briefing should follow this structure:
 5. Clear action bullets
 6. These sections in order when relevant:
 
-**Executive brief rule:** Only surface items in the executive brief that are P0 — meaning they are related to a key domain (Swarm/OSP, SIP, FP&A, Budget, BPM) or require Shuning's direct action today. Non-key-domain items, even with VIP involvement, belong in the P1 checklist only — not the executive brief.
+**Executive brief rule:** Only surface items in the executive brief that are P0 — meaning they are related to a P0 domain (AI, BPM) or require Shuning's direct action today. P1 domain items (Swarm/OSP, SIP, FP&A, Budget) and non-domain items, even with VIP involvement, belong in the P1 checklist only — not the executive brief.
 
 **Lookback window:** Always use the past 24 hours from the time of the run. Never use "since the last briefing" as the lower bound — the window is always a fixed rolling 24h.
 
@@ -206,13 +213,14 @@ The sections in order when relevant:
 ## Priority rubric
 Use this by default:
 - P0 (super important — act today):
-  - Email or meeting is related to a key domain (Swarm/OSP, SIP, FP&A, Budget, BPM) — check subject, body, and full thread
-  - Due today or needs a reply today, AND related to a key domain or Shuning is directly asked
-  - Meeting today needs prep soon **and** Shuning has accepted the invite **and** is related to a key domain
+  - Email or meeting is related to a **P0 domain** (AI, BPM) — check subject, body, and full thread
+  - Due today or needs a reply today, AND related to a P0 domain or Shuning is directly asked
+  - Meeting today needs prep soon **and** Shuning has accepted the invite **and** is related to a P0 domain
   - Shuning is specifically @-mentioned or in `To:` with a direct ask **and** a VIP is involved
   - Travel, interview, contract, or approval issue that can block progress
-  - **VIP involvement without key domain relevance = P1, not P0**
+  - **VIP involvement without P0 domain relevance = P1, not P0**
 - P1 (important — handle within 48 hours):
+  - Email or meeting is related to a **P1 domain** (Swarm/OSP, SIP, FP&A, Budget) — check subject, body, and full thread
   - Meets the P1 email or meeting criteria above (VIP with 10+ recipients, direct ask, deadline in To:, external attendees, accepted invite, etc.)
   - Likely reply needed within 48 hours
   - Important meeting tomorrow needing prep today — only if Shuning accepted the invite
@@ -230,7 +238,7 @@ Use this by default:
 
 ## Open action item tracking
 
-When reading key domain (Swarm/OSP, SIP, FP&A, Budget, BPM) email threads, meeting pre-reads, or SeaTalk messages, extract any action items assigned to Shuning and persist them in `.claude/state/open-action-items.json`.
+When reading key domain (AI, BPM, Swarm/OSP, SIP, FP&A, Budget) email threads, meeting pre-reads, or SeaTalk messages, extract any action items assigned to Shuning and persist them in `.claude/state/open-action-items.json`.
 
 ### File format
 ```json
