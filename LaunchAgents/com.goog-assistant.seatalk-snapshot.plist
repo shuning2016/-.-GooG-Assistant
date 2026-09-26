@@ -28,7 +28,7 @@
   <key>ProgramArguments</key>
   <array>
     <string>/usr/bin/python3</string>
-    <string>/Users/shuning.wang/Library/CloudStorage/GoogleDrive-shuning2016@gmail.com/My Drive/My Projects/Working Efficiency/GooG Assistant/scripts/seatalk_snapshot.py</string>
+    <string>/Users/shuning.wang/My Projects/Working Efficiency/GooG Assistant/scripts/seatalk_snapshot.py</string>
     <string>--hours</string>
     <string>24</string>
   </array>
@@ -49,14 +49,14 @@
   </array>
 
   <key>WorkingDirectory</key>
-  <string>/Users/shuning.wang/Library/CloudStorage/GoogleDrive-shuning2016@gmail.com/My Drive/My Projects/Working Efficiency/GooG Assistant</string>
+  <string>/Users/shuning.wang/My Projects/Working Efficiency/GooG Assistant</string>
 
   <key>EnvironmentVariables</key>
   <dict>
     <key>PATH</key>
     <string>/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
     <key>SEATALK_SKILL_ROOT</key>
-    <string>/Users/shuning.wang/Library/CloudStorage/GoogleDrive-shuning2016@gmail.com/My Drive/My Projects/Working Efficiency/use-seatalk</string>
+    <string>/Users/shuning.wang/My Projects/Working Efficiency/use-seatalk</string>
   </dict>
 
   <key>StandardOutPath</key>
