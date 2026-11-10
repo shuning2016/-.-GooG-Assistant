@@ -58,6 +58,11 @@ _EXPORTS = {
 }
 _TEXT_MIMES = ("application/json", "application/xml", "application/csv")
 
+# Docs' markdown export inlines every image as base64; drop the payloads, keep the refs.
+_MD_IMAGE_DEF = re.compile(r"(?m)^(\[[^\]]+\]):\s*<data:[^>]*>\s*$")
+_MD_IMAGE_INLINE = re.compile(r"\]\(data:[^)]*\)")
+EXPORT_TIMEOUT_S = 45
+
 _URL_ID = re.compile(r"/d/([A-Za-z0-9_-]{10,})|[?&]id=([A-Za-z0-9_-]{10,})")
 
 
@@ -139,7 +144,7 @@ def _read(token: str, scopes: list[str], params: dict) -> dict:
         if mime == "application/vnd.google-apps.document" and str_param(params, "format") == "md":
             export_mime, fmt = "text/markdown", "markdown"
         body, _ = google_get(token, f"{DRIVE_API}/{quoted}/export",
-                             {"mimeType": export_mime}, raw=True)
+                             {"mimeType": export_mime}, raw=True, timeout=EXPORT_TIMEOUT_S)
     elif mime.startswith("text/") or mime in _TEXT_MIMES:
         if int(meta.get("size") or 0) > DOWNLOAD_BYTE_CAP:
             raise BadRequest(f"file larger than {DOWNLOAD_BYTE_CAP // 1024 // 1024} MB", 413)
@@ -150,6 +155,9 @@ def _read(token: str, scopes: list[str], params: dict) -> dict:
         raise BadRequest(f"cannot read content of {mime or 'unknown type'}; use op=meta", 415)
 
     text = body.decode("utf-8", "replace").lstrip("﻿")
+    if fmt == "markdown":
+        text = _MD_IMAGE_DEF.sub(r"\1: (image omitted)", text)
+        text = _MD_IMAGE_INLINE.sub("](image omitted)", text)
     return {
         "ok": True,
         "file": _file(meta),

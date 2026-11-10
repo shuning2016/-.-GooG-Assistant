@@ -12,6 +12,7 @@ from __future__ import annotations
 import hmac
 import json
 import os
+import socket
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -54,12 +55,13 @@ def access_token() -> tuple[str, list[str]]:
     return payload["access_token"], payload.get("scope", "").split()
 
 
-def google_get(token: str, url: str, params: dict | None = None, raw: bool = False):
+def google_get(token: str, url: str, params: dict | None = None, raw: bool = False,
+               timeout: int = 25):
     """GET a Google API URL. Returns parsed JSON, or (bytes, content-type) when raw=True."""
     if params:
         url += "?" + urllib.parse.urlencode(params, doseq=True)
     req = urllib.request.Request(url, headers={"Authorization": f"Bearer {token}"})
-    with urllib.request.urlopen(req, timeout=25) as resp:
+    with urllib.request.urlopen(req, timeout=timeout) as resp:
         body = resp.read()
         if raw:
             return body, resp.headers.get("Content-Type", "")
@@ -119,6 +121,10 @@ class ReadOnlyHandler(BaseHTTPRequestHandler):
         except urllib.error.HTTPError as exc:
             # Never echo Google's response body — it can include request details.
             return self._send(502, {"ok": False, "error": f"google api error {exc.code}"})
+        except (TimeoutError, socket.timeout, urllib.error.URLError) as exc:
+            if not isinstance(exc, urllib.error.URLError) or isinstance(exc.reason, (TimeoutError, socket.timeout)):
+                return self._send(504, {"ok": False, "error": "google api timeout"})
+            return self._send(502, {"ok": False, "error": "google api unreachable"})
         except ConfigError as exc:
             return self._send(500, {"ok": False, "error": str(exc)})
         except Exception as exc:

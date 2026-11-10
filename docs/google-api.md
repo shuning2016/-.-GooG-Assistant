@@ -195,7 +195,7 @@ Google 端授权的 scope 只有 `gmail.readonly`、`calendar.readonly`、`drive
 | 参数 | 必填 | 说明 |
 |---|---|---|
 | `id` | 是 | 文件 ID 或链接 |
-| `format` | 否 | 只对 Google Docs 有效：传 `md` 导出 Markdown（保留标题、列表、表格），默认是纯文本 |
+| `format` | 否 | 只对 Google Docs 有效：传 `md` 导出 Markdown（保留标题、列表、表格；内嵌图片替换成 `(image omitted)`），默认是纯文本 |
 
 | 文件类型 | 返回内容 | `content_format` |
 |---|---|---|
@@ -255,8 +255,10 @@ Google 端授权的 scope 只有 `gmail.readonly`、`calendar.readonly`、`drive
 | 413 | `file larger than 5 MB` | Drive 上的纯文本文件太大 |
 | 415 | `cannot read content of application/pdf; use op=meta` | 这种文件类型不能读内容 |
 | 500 | `missing env var GOOGLE_…` | Vercel 上缺少 Google 变量，补上后 Redeploy |
-| 500 | 异常类名，如 `TimeoutError` | 内部错误，重试；持续出现就看 Vercel 函数日志 |
+| 500 | 异常类名 | 内部错误，重试；持续出现就看 Vercel 函数日志 |
 | 502 | `google api error <code>` | Google 拒绝了请求，见下表 |
+| 502 | `google api unreachable` | 连不上 Google，稍后重试 |
+| 504 | `google api timeout` | Google 响应太慢（读文件时超过 45 秒），常见于特别大的 Sheet，稍后重试或改读别的文件 |
 
 | Google 错误码 | 常见原因 |
 |---|---|
