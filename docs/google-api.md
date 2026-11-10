@@ -9,9 +9,9 @@
 
 | 接口 | 能做 | 不能做 |
 |---|---|---|
-| `/api/gmail` | 查身份和权限、搜邮件、读纯文本正文 | 发信、回复、改标签、删除、标已读、读附件 |
+| `/api/gmail` | 查身份和权限、搜邮件、读纯文本正文、**读附件**（PDF / PPTX / DOCX / XLSX 转文字，或下载原文件） | 发信、回复、改标签、删除、标已读 |
 | `/api/gcal` | 列日历、按时间段/关键词查日程、看单个日程和参会人回复 | 建/改/删日程、接受/拒绝邀请 |
-| `/api/drive` | 搜文件、看元数据、读 Docs / Sheets / Slides / 纯文本内容 | 上传、编辑、共享、删除；读 PDF/图片内容 |
+| `/api/drive` | 搜文件、看元数据、读 Docs / Sheets / Slides / PDF / Office 文件 / 纯文本内容 | 上传、编辑、共享、删除；识别图片里的文字 |
 
 Google 端授权的 scope 只有 `gmail.readonly`、`calendar.readonly`、`drive.readonly`，所以即使代码出错，也不会有写权限。用 `op=whoami` 能看到 token 实际被授予的 scope。
 
@@ -91,7 +91,51 @@ Google 端授权的 scope 只有 `gmail.readonly`、`calendar.readonly`、`drive
 |---|---|---|
 | `id` | 是 | search 结果里的 `id` |
 
-返回 `message`：包含 search 里的全部字段，另加 `body`（第一个 `text/plain` 部分，最多 20,000 字符；只有 HTML 版本的邮件为空字符串）和 `body_truncated`。
+返回 `message`：包含 search 里的全部字段，另加：
+
+| 字段 | 说明 |
+|---|---|
+| `body` | 第一个 `text/plain` 部分，最多 20,000 字符；只有 HTML 版本的邮件为空字符串 |
+| `body_truncated` | 正文是否被截断 |
+| `attachments` | 附件列表，每项 `{part, filename, mime_type, size, readable}`；没有附件时为 `[]` |
+
+`readable: true` 表示可以用 `op=attachment` 转成文字。`part` 是附件在邮件里的固定编号，用来指定读哪一个附件。
+
+### `op=attachment` — 读附件
+
+| 参数 | 必填 | 默认 | 说明 |
+|---|---|---|---|
+| `id` | 是 | — | 邮件 ID |
+| `part` | 是 | — | `op=read` 返回的 `attachments[].part` |
+| `format` | 否 | `text` | `text` = 在服务端转成文字；`raw` = 返回原文件的 base64 |
+
+`format=text` 支持的类型：
+
+| 附件 | 返回内容 | `content_format` |
+|---|---|---|
+| PDF | 每页文字，用 `--- page N ---` 分隔 | `pdf-text` |
+| PPTX | 每张幻灯片的文字、表格（一行一个，单元格用 ` \| ` 分隔）和演讲者备注 `[notes]`，用 `--- slide N ---` 分隔 | `pptx-text` |
+| DOCX | 段落和表格，保持原顺序 | `docx-text` |
+| XLSX | **每个**工作表的 CSV，用 `--- sheet 名称 ---` 分隔；每张表最多 2,000 行 | `xlsx-csv` |
+| TXT / CSV / MD / JSON / HTML / ICS 等 | 原文 | `text` |
+| 图片、旧版 .ppt / .doc / .xls | 不支持文字提取，返回 `415`，改用 `format=raw` | — |
+
+```json
+{
+  "ok": true,
+  "attachment": { "part": "1", "filename": "SG Reg LLM Nov.pptx",
+                  "mime_type": "application/octet-stream", "size": 2483021, "readable": true },
+  "content_format": "pptx-text",
+  "content": "--- slide 1 ---\nSG Reg LLM Monthly\n…\n--- slide 2 ---\nMetric | Oct | Nov\n…",
+  "content_truncated": false
+}
+```
+
+- `content` 最多 100,000 字符。
+- **只提取文字**：图表、截图里的数字读不到。需要看图时，用 `format=raw` 下载原文件自己处理。
+- `format=raw` 返回 `{"ok": true, "attachment": {…}, "data_base64": "…"}`，**最大 3 MB**（Vercel 单次响应上限 4.5 MB，base64 会膨胀约 1/3）；超过时返回 `413`。
+- 文件类型以扩展名为准。Gmail 经常把附件标成 `application/octet-stream`，接口会按 `.pptx`、`.pdf` 等扩展名识别。
+- 邮件里的 deck 如果是 Google Drive / Slides **链接**而不是附件，就把链接交给 `/api/drive?op=read` 读。
 
 ## 5. Calendar — `/api/gcal`
 
@@ -203,14 +247,15 @@ Google 端授权的 scope 只有 `gmail.readonly`、`calendar.readonly`、`drive
 | Google Sheets | **第一个工作表**的 CSV | `csv` |
 | Google Slides | 所有幻灯片的文字 | `text` |
 | 纯文本 / CSV / JSON / XML 文件（≤ 5 MB） | 原文 | `text` |
-| PDF、图片、Office 文件等 | 不支持，返回 `415` | — |
+| 上传的 PDF / PPTX / DOCX / XLSX（≤ 25 MB） | 和 Gmail 附件一样转成文字（见 `op=attachment` 的表） | `pdf-text` / `pptx-text` / `docx-text` / `xlsx-csv` |
+| 图片、旧版 .ppt / .doc / .xls 等 | 不支持，返回 `415` | — |
 
 ```json
 { "ok": true, "file": { … 同 meta … }, "content_format": "markdown",
   "content": "# SIP 2027 Plan\n…", "content_truncated": false }
 ```
 
-`content` 最多 50,000 字符。Google 导出接口的上限是 10 MB，特别大的 Doc 会返回 `502 google api error 403`。
+`content` 最多 100,000 字符。Google 导出接口的上限是 10 MB，特别大的 Doc 会返回 `502 google api error 403`。
 
 ## 7. 查询语法速查
 
@@ -249,11 +294,13 @@ Google 端授权的 scope 只有 `gmail.readonly`、`calendar.readonly`、`drive
 
 | HTTP | 典型 `error` | 原因 / 处理 |
 |---|---|---|
-| 400 | `missing q` / `missing id` / `max must be an integer` / `unknown op: xxx` / `type must be one of …` / `from must be YYYY-MM-DD…` / `to must be after from` | 参数有误，按提示修改 |
+| 400 | `missing q` / `missing id` / `missing part` / `format must be text or raw` / `max must be an integer` / `unknown op: xxx` / `type must be one of …` / `from must be YYYY-MM-DD…` / `to must be after from` | 参数有误，按提示修改 |
 | 401 | `unauthorized` | 没带口令、口令错误，或 Vercel 上没配 `GMAIL_PROXY_TOKEN`（或配了但还没 Redeploy） |
 | 405 | `read-only: GET only` | 用了 GET 以外的方法 |
-| 413 | `file larger than 5 MB` | Drive 上的纯文本文件太大 |
-| 415 | `cannot read content of application/pdf; use op=meta` | 这种文件类型不能读内容 |
+| 404 | `no attachment with part N; see op=read` | `part` 不对，先用 `op=read` 看附件列表 |
+| 413 | `file larger than 5 MB` / `file larger than 25 MB` / `attachment larger than 3 MB; use format=text` | 文件太大：Drive 纯文本超过 5 MB、Drive 二进制文件超过 25 MB，或者附件用 `format=raw` 超过 3 MB |
+| 415 | `cannot extract text from image/png; try format=raw` / `cannot read content of …; use op=meta` | 这种文件类型不能转成文字 |
+| 422 | `could not parse attachment (PdfReadError); try format=raw` | 文件损坏或加密，解析失败 |
 | 500 | `missing env var GOOGLE_…` | Vercel 上缺少 Google 变量，补上后 Redeploy |
 | 500 | 异常类名 | 内部错误，重试；持续出现就看 Vercel 函数日志 |
 | 502 | `google api error <code>` | Google 拒绝了请求，见下表 |
@@ -297,6 +344,12 @@ curl -s -G -H "$AUTH" "$B/api/gcal" \
 curl -s -G -H "$AUTH" "$B/api/drive" \
   --data-urlencode "op=search" --data-urlencode "text=SIP" --data-urlencode "type=doc"
 
+# Gmail：读一封邮件，看有哪些附件
+curl -s -H "$AUTH" "$B/api/gmail?op=read&id=<邮件ID>"
+
+# Gmail：把第 1 个附件（part=1）转成文字
+curl -s -H "$AUTH" "$B/api/gmail?op=attachment&id=<邮件ID>&part=1"
+
 # Docs：直接用链接读成 Markdown
 curl -s -G -H "$AUTH" "$B/api/drive" \
   --data-urlencode "op=read" --data-urlencode "format=md" \
@@ -334,6 +387,13 @@ sent = google("gmail", "search", q='in:sent "Listing Optimisation" newer_than:90
 today = google("gcal", "events")
 accepted = [e for e in today["events"] if e["my_response"] == "accepted"]
 
+# 读一封邮件的所有可读附件
+msg = google("gmail", "read", id=sent["messages"][0]["id"])["message"]
+for att in msg["attachments"]:
+    if att["readable"]:
+        a = google("gmail", "attachment", id=msg["id"], part=att["part"])
+        print(att["filename"], a["content_format"], len(a["content"]))
+
 docs = google("drive", "search", text="SIP", type="doc", max=5)
 if docs["files"]:
     doc = google("drive", "read", id=docs["files"][0]["id"], format="md")
@@ -346,8 +406,8 @@ if docs["files"]:
 |---|---|
 | 不分页 | Gmail 最多 50 封、Calendar 最多 250 个、Drive 最多 100 个，都只返回前 N 个；要更多就把时间范围拆小 |
 | Gmail 速度 | search 会逐封拉取邮件头，50 封大约 5–15 秒 |
-| 只有文本 | 不返回 HTML、附件或图片；PDF 只能看元数据 |
-| Sheets | 只导出第一个工作表 |
+| 只有文本 | 邮件不返回 HTML 正文；附件和 Drive 文件只提取文字，图表和图片里的内容读不到（附件可以用 `format=raw` 拿原文件） |
+| Sheets | Google Sheets 只导出第一个工作表；上传的 XLSX 会导出全部工作表 |
 | 账号固定 | 都是 Vercel 上 refresh token 对应的账号（`shuning.wang@shopee.com`） |
 
 ## 11. 安全与口令轮换

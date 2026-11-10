@@ -13,7 +13,8 @@ Endpoints (GET only):
   /api/drive?op=read&id=<file id>&format=md
       → {"ok": true, "file": {...}, "content": "<text, max 50k chars>", "content_format": "..."}
       Docs → text (or markdown with format=md), Sheets → CSV of the first sheet,
-      Slides → text, plain-text files → as-is. Other types (PDF, images…) → 415.
+      Slides → text, plain-text files → as-is, uploaded PDF / PPTX / DOCX / XLSX → extracted
+      text (≤ 25 MB). Other types (images, legacy .ppt/.doc/.xls…) → 415.
 
 Accepts Google Docs/Sheets/Slides URLs in place of an id.
 
@@ -28,12 +29,14 @@ import sys
 import urllib.parse
 
 sys.path.insert(0, os.path.dirname(__file__))
+from _extract import UnsupportedType, extract_text, kind_of
 from _google_ro import BadRequest, ReadOnlyHandler, google_get, int_param, str_param
 
 DRIVE_API = "https://www.googleapis.com/drive/v3/files"
 MAX_RESULTS_CAP = 100
-CONTENT_CHAR_CAP = 50_000
-DOWNLOAD_BYTE_CAP = 5 * 1024 * 1024
+CONTENT_CHAR_CAP = 100_000
+DOWNLOAD_BYTE_CAP = 5 * 1024 * 1024          # plain-text files
+BINARY_DOWNLOAD_BYTE_CAP = 25 * 1024 * 1024  # PDF / Office files, parsed server-side
 _FILE_FIELDS = (
     "id,name,mimeType,modifiedTime,createdTime,size,webViewLink,"
     "owners(emailAddress,displayName),lastModifyingUser(emailAddress,displayName),"
@@ -151,6 +154,18 @@ def _read(token: str, scopes: list[str], params: dict) -> dict:
         body, _ = google_get(token, f"{DRIVE_API}/{quoted}",
                              {"alt": "media", **_ALL_DRIVES}, raw=True)
         fmt = "text"
+    elif kind_of(mime, meta.get("name", "")) is not None:
+        if int(meta.get("size") or 0) > BINARY_DOWNLOAD_BYTE_CAP:
+            raise BadRequest(f"file larger than {BINARY_DOWNLOAD_BYTE_CAP // 1024 // 1024} MB", 413)
+        data, _ = google_get(token, f"{DRIVE_API}/{quoted}",
+                             {"alt": "media", **_ALL_DRIVES}, raw=True, timeout=EXPORT_TIMEOUT_S)
+        try:
+            text, fmt = extract_text(data, mime, meta.get("name", ""))
+        except UnsupportedType as exc:
+            raise BadRequest(f"cannot read content of {exc}; use op=meta", 415)
+        except Exception as exc:
+            raise BadRequest(f"could not parse file ({type(exc).__name__})", 422)
+        return _content(meta, text, fmt)
     else:
         raise BadRequest(f"cannot read content of {mime or 'unknown type'}; use op=meta", 415)
 
@@ -158,6 +173,10 @@ def _read(token: str, scopes: list[str], params: dict) -> dict:
     if fmt == "markdown":
         text = _MD_IMAGE_DEF.sub(r"\1: (image omitted)", text)
         text = _MD_IMAGE_INLINE.sub("](image omitted)", text)
+    return _content(meta, text, fmt)
+
+
+def _content(meta: dict, text: str, fmt: str) -> dict:
     return {
         "ok": True,
         "file": _file(meta),
