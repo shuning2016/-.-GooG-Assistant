@@ -7,7 +7,9 @@
     "api/seatalk_check.py":  { "maxDuration": 60 },
     "api/action_items.py":   { "maxDuration": 30 },
     "api/pdf_qa.py":         { "maxDuration": 30 },
-    "api/gmail.py":          { "maxDuration": 60 }
+    "api/gmail.py":          { "maxDuration": 60 },
+    "api/gcal.py":           { "maxDuration": 30 },
+    "api/drive.py":          { "maxDuration": 60 }
   },
   "rewrites": [
     { "source": "/", "destination": "/api/view" }
