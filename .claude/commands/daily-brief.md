@@ -97,17 +97,18 @@ Always include:
 - tomorrow's first meeting if prep today would help
 
 **Meeting P0** — flag when any of these are true:
-- The title or description is related to a key domain (Swarm/OSP, SIP, FP&A, Budget, BPM) **and** Shuning has accepted the invite
+- The title or description is related to a **P0 domain (AI, BPM)** **and** Shuning has accepted the invite
 - Shuning is specifically asked to present, decide, or provide an update **and** a VIP is involved **and** Shuning has accepted the invite
 
 **Meeting P1** — flag when any of these are true (and not P0):
+- The title or description is related to a **P1 domain (Swarm/OSP, SIP, FP&A, Budget)** **and** Shuning has accepted the invite
 - Organizer or attendee includes a VIP (10 or more attendees) **and** Shuning has accepted
 - External attendees are involved **and** Shuning has accepted
 - The title signals a review, decision, escalation, interview, travel, contract, hiring, or action item **and** Shuning has accepted
 - A pre-read, deck, or deliverable is implied **and** Shuning has accepted
 - **Always check RSVP.** If Shuning has not accepted (declined or no response), downgrade to P2 and note the RSVP status explicitly — do not generate prep recommendations.
 
-**VIP attending a meeting NOT related to any key domain = P1, not P0, regardless of attendee count.**
+**VIP attending a meeting NOT related to a P0 domain = P1, not P0, regardless of attendee count.**
 
 **Meeting P2:** Total attendees > 30; not key domain; Shuning has not accepted.
 
@@ -185,14 +186,15 @@ For each important meeting where a pre-read was found:
 Use this default rubric.
 
 ### P0
-- Email or meeting is related to a key domain (Swarm/OSP, SIP, FP&A, Budget, BPM)
+- Email or meeting is related to a **P0 domain (AI, BPM)**
 - Shuning is specifically @-mentioned or in `To:` with a direct ask **and** a VIP is involved
-- Due today or needs a reply today, AND related to a key domain
-- Meeting today needs prep soon **and** Shuning has accepted **and** it is key-domain related
+- Due today or needs a reply today, AND related to a P0 domain
+- Meeting today needs prep soon **and** Shuning has accepted **and** it is related to a P0 domain
 - Travel, interview, contract, approval, or escalation issue that can block progress
-- **VIP involvement alone without key domain relevance = P1, not P0**
+- **VIP involvement alone without P0 domain relevance = P1, not P0**
 
 ### P1
+- Email or meeting is related to a **P1 domain (Swarm/OSP, SIP, FP&A, Budget)**
 - Likely needs a reply within 48 hours
 - Important meeting tomorrow that needs prep today
 - Follow-up with meaningful downside if delayed

@@ -59,6 +59,8 @@ def google_creds() -> Credentials:
 _KEY_DOMAIN_TERMS = (
     "swarm", "osp", "sip", "fp&a", "fpa", "budget", "bpm",
     "cncb", "cnsip", "cnls", "sls", "spx", "fbs",
+    "artificial intelligence", " ai ", "llm", "genai", "generative ai",
+    "machine learning", "ai strategy", "ai product",
 )
 
 
@@ -395,7 +397,8 @@ User context:
 - Name: Shuning Wang  |  Email: shuning.wang@shopee.com
 - Timezone: Asia/Singapore  |  Working hours: 09:30–19:30 SGT
 - VIP senders: jianghong.liu@shopee.com, hoi@sea.com, fengc@sea.com
-- Key domains: Swarm/OSP, SIP, FP&A, Budget, BPM
+- P0 domains (escalate immediately): AI/artificial intelligence/LLMs/machine learning, BPM
+- P1 domains (handle within 48h): Swarm/OSP, SIP, FP&A, Budget
 
 Produce a crisp, action-oriented daily briefing using this exact structure:
 
@@ -464,18 +467,19 @@ Numbered ordered list of concrete next steps.
 ─── EMAIL TRIAGE RULES ───────────────────────────────────────────────────────────────
 
 P0 (super important — act today). An email is P0 when ANY of these are true:
+  • Subject, body, or thread context related to a P0 domain (AI/artificial intelligence/LLMs/machine learning/AI strategy, BPM) — check the full thread, not just the subject line
   • From or to a VIP AND total recipients < 10
   • A VIP has specifically replied in the email thread — regardless of recipient count or domain
-  • Subject, body, or thread context related to a key domain (Swarm/OSP, SIP, FP&A, Budget, BPM) — check the full thread, not just the subject line
   • Subject contains "for your action" or the word "action" AND Shuning is in To:
   • A direct ask, deadline, escalation, or blocker is present AND a VIP is involved
 
 P1 (important — handle within 48 h). An email is P1 when ANY of these are true:
+  • Subject, body, or thread context related to a P1 domain (Swarm/OSP, SIP, FP&A, Budget) — check the full thread, not just the subject line
   • From a VIP sender but total recipients ≥ 10 (large-group VIP message)
   • Shuning is in To: (not only Cc:) AND email asks a direct question or assigns an action
   • Shuning is addressed directly (Hi Shuning / Shuning, / Hey Shuning) and not already P0
   • Mentions deadline, contract, travel, interview, meeting, approval, confirmation,
-    escalation, or blocker — AND Shuning is in To: (not only Cc:) — and is NOT related to a key domain (which would make it P0)
+    escalation, or blocker — AND Shuning is in To: (not only Cc:) — and is NOT related to a P0 domain (which would make it P0)
   • Thread appears to require a reply within the next 2 days
   • Email materially changes risk, ownership, timing, or expectations
   • Email relates to team headcount, personnel changes, internal transfers, or org structure affecting Shuning's direct team
@@ -495,11 +499,12 @@ Suppress entirely (omit from briefing unless they contain a new risk, direct ask
 ─── CALENDAR TRIAGE RULES ───────────────────────────────────────────────────────────
 
 P0 meeting when ANY are true:
+  • Title or description is related to a P0 domain (AI/artificial intelligence/LLMs/machine learning/AI strategy, BPM) AND Shuning has accepted the invite
   • A VIP is organizer or attendee AND total attendees < 10 AND Shuning has accepted the invite
   • A VIP has specifically sent a direct reply or message related to the meeting — regardless of attendee count — AND Shuning has accepted
-  • Title or description is related to a key domain AND Shuning has accepted the invite
 
 P1 meeting when ANY are true (and not already P0):
+  • Title or description is related to a P1 domain (Swarm/OSP, SIP, FP&A, Budget) AND Shuning has accepted the invite
   • VIP organizer/attendee with ≥ 10 total attendees AND Shuning has accepted
   • External participants are involved AND Shuning has accepted
   • Title or description signals a decision, review, escalation, interview, travel,
