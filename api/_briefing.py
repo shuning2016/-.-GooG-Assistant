@@ -4,7 +4,13 @@ Shared briefing logic used by both /api/cron and /api/trigger.
 Keeping this in a private module (_briefing.py) avoids cross-function
 imports between sibling api/ files, which are unreliable in Vercel's
 Python serverless runtime.
+
+Google APIs are called over plain REST via _google_ro (urllib) rather than
+google-api-python-client, whose 100 MB discovery cache was being bundled into
+every Vercel function.
 """
+
+from __future__ import annotations
 
 import base64
 import json
@@ -12,6 +18,7 @@ import os
 import re
 import sys
 import smtplib
+import urllib.parse
 from datetime import datetime, timedelta
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -19,12 +26,10 @@ from zoneinfo import ZoneInfo
 
 import anthropic
 import markdown as md_lib
-from google.auth.transport.requests import Request
-from google.oauth2.credentials import Credentials
-from googleapiclient.discovery import build
 from upstash_redis import Redis
 
 sys.path.insert(0, os.path.dirname(__file__))
+from _google_ro import access_token, google_get
 from _seatalk import fetch_seatalk_snapshot, format_seatalk_payload
 from _pdf_reader import generate_pdf_qa, save_pdf_qa, select_best_pdf
 
@@ -35,25 +40,31 @@ DEDUP_WINDOW_SECONDS = 1800  # 30 minutes
 
 class DuplicateRunError(RuntimeError):
     pass
-GOOGLE_SCOPES = [
-    "https://www.googleapis.com/auth/gmail.readonly",
-    "https://www.googleapis.com/auth/calendar.readonly",
-]
 
 
 # ─── Google helpers ────────────────────────────────────────────────────────────
 
-def google_creds() -> Credentials:
-    creds = Credentials(
-        token=None,
-        refresh_token=os.environ["GOOGLE_REFRESH_TOKEN"],
-        client_id=os.environ["GOOGLE_CLIENT_ID"],
-        client_secret=os.environ["GOOGLE_CLIENT_SECRET"],
-        token_uri="https://oauth2.googleapis.com/token",
-        scopes=GOOGLE_SCOPES,
+GMAIL_API = "https://gmail.googleapis.com/gmail/v1/users/me"
+CAL_API = "https://www.googleapis.com/calendar/v3"
+ATTACHMENT_TIMEOUT_S = 45
+
+
+def _quote(value: str) -> str:
+    return urllib.parse.quote(value, safe="")
+
+
+def _gmail_get(token: str, path: str, params: dict | None = None, timeout: int = 25) -> dict:
+    return google_get(token, f"{GMAIL_API}/{path}", params, timeout=timeout)
+
+
+def _gmail_attachment(token: str, msg_id: str, att_id: str) -> bytes:
+    """Download one attachment and return its decoded bytes."""
+    att = _gmail_get(
+        token,
+        f"messages/{_quote(msg_id)}/attachments/{_quote(att_id)}",
+        timeout=ATTACHMENT_TIMEOUT_S,
     )
-    creds.refresh(Request())
-    return creds
+    return base64.urlsafe_b64decode(att.get("data", "") + "==")
 
 
 _KEY_DOMAIN_TERMS = (
@@ -145,7 +156,7 @@ _CLAUDE_IMAGE_TYPES = {"image/png", "image/jpeg", "image/gif", "image/webp"}
 
 def _extract_images(
     payload: dict,
-    service,
+    token: str,
     msg_id: str,
     max_images: int = 3,
     max_bytes: int = 1_572_864,  # 1.5 MB per image
@@ -167,15 +178,7 @@ def _extract_images(
                 att_id = part.get("body", {}).get("attachmentId")
                 if att_id:
                     try:
-                        att = (
-                            service.users()
-                            .messages()
-                            .attachments()
-                            .get(userId="me", messageId=msg_id, id=att_id)
-                            .execute()
-                        )
-                        raw_data = att.get("data", "")
-                        decoded = base64.urlsafe_b64decode(raw_data + "==")
+                        decoded = _gmail_attachment(token, msg_id, att_id)
                         if len(decoded) > max_bytes:
                             continue  # skip oversized images
                         # Claude requires standard base64, not urlsafe
@@ -224,7 +227,7 @@ def _extract_pdf_attachments(payload: dict) -> list[dict]:
     return results
 
 
-def fetch_gmail(service, since: datetime) -> list[dict]:
+def fetch_gmail(token: str, since: datetime) -> list[dict]:
     """Return up to 40 message summaries since `since`.
 
     For key-domain emails (Swarm/OSP/SIP/FP&A/Budget/BPM and related terms),
@@ -233,18 +236,16 @@ def fetch_gmail(service, since: datetime) -> list[dict]:
     """
     after_ts = int(since.timestamp())
     q = f"after:{after_ts} -category:promotions -category:social -category:updates"
-    result = service.users().messages().list(userId="me", q=q, maxResults=50).execute()
+    result = _gmail_get(token, "messages", {"q": q, "maxResults": 50})
     messages = result.get("messages", [])[:40]
 
     out = []
     for m in messages:
         # First pass: metadata only (fast)
-        meta = service.users().messages().get(
-            userId="me",
-            id=m["id"],
-            format="metadata",
-            metadataHeaders=["From", "To", "Cc", "Subject", "Date"],
-        ).execute()
+        meta = _gmail_get(token, f"messages/{_quote(m['id'])}", {
+            "format": "metadata",
+            "metadataHeaders": ["From", "To", "Cc", "Subject", "Date"],
+        })
         h = {hdr["name"]: hdr["value"] for hdr in meta.get("payload", {}).get("headers", [])}
         subject = h.get("Subject", "")
         snippet = meta.get("snippet", "")
@@ -261,14 +262,10 @@ def fetch_gmail(service, since: datetime) -> list[dict]:
         if _is_key_domain(subject, snippet) or is_pdf_source:
             # Second pass: full body + image/PDF attachments
             try:
-                full = service.users().messages().get(
-                    userId="me",
-                    id=m["id"],
-                    format="full",
-                ).execute()
+                full = _gmail_get(token, f"messages/{_quote(m['id'])}", {"format": "full"})
                 full_payload = full.get("payload", {})
                 body_text = _extract_plain_body(full_payload)
-                images = _extract_images(full_payload, service, m["id"])
+                images = _extract_images(full_payload, token, m["id"])
                 if is_pdf_source:
                     # Extract PDF metadata for the Q&A tab
                     pdf_attachments = _extract_pdf_attachments(full_payload)
@@ -295,19 +292,18 @@ def fetch_gmail(service, since: datetime) -> list[dict]:
     return out
 
 
-def fetch_calendar(service, now_sgt: datetime) -> list[dict]:
+def fetch_calendar(token: str, now_sgt: datetime) -> list[dict]:
     """Return events from now through end of tomorrow (SGT)."""
     tomorrow_end = (now_sgt + timedelta(days=1)).replace(
         hour=23, minute=59, second=59, microsecond=0
     )
-    result = service.events().list(
-        calendarId="primary",
-        timeMin=now_sgt.isoformat(),
-        timeMax=tomorrow_end.isoformat(),
-        singleEvents=True,
-        orderBy="startTime",
-        maxResults=25,
-    ).execute()
+    result = google_get(token, f"{CAL_API}/calendars/primary/events", {
+        "timeMin": now_sgt.isoformat(),
+        "timeMax": tomorrow_end.isoformat(),
+        "singleEvents": "true",
+        "orderBy": "startTime",
+        "maxResults": 25,
+    })
     events = []
     for ev in result.get("items", []):
         events.append(
@@ -843,7 +839,7 @@ def _redis() -> Redis:
     )
 
 
-def _run_pdf_qa(gmail_svc, emails: list[dict], today_str: str, r) -> None:
+def _run_pdf_qa(token: str, emails: list[dict], today_str: str, r) -> None:
     """
     For each pre-read email with PDF attachments, download the best PDF and
     generate Ian Ho–style predicted questions using Claude. Results are stored
@@ -880,15 +876,7 @@ def _run_pdf_qa(gmail_svc, emails: list[dict], today_str: str, r) -> None:
 
         try:
             # Download the PDF bytes from Gmail
-            att_resp = (
-                gmail_svc.users()
-                .messages()
-                .attachments()
-                .get(userId="me", messageId=msg_id, id=att_id)
-                .execute()
-            )
-            raw_data = att_resp.get("data", "")
-            pdf_bytes = base64.urlsafe_b64decode(raw_data + "==")
+            pdf_bytes = _gmail_attachment(token, msg_id, att_id)
             if len(pdf_bytes) < 1000:
                 continue  # Skip suspiciously small "PDFs"
 
@@ -923,19 +911,17 @@ def run_briefing() -> tuple[str, str, str]:
         f"→ {now_sgt.strftime('%Y-%m-%d %H:%M SGT')}"
     )
 
-    creds = google_creds()
-    gmail_svc = build("gmail", "v1", credentials=creds)
-    cal_svc = build("calendar", "v3", credentials=creds)
+    token, _scopes = access_token()
 
-    emails = fetch_gmail(gmail_svc, since)
-    events = fetch_calendar(cal_svc, now_sgt)
+    emails = fetch_gmail(token, since)
+    events = fetch_calendar(token, now_sgt)
     seatalk_msgs = fetch_seatalk_snapshot(today_str)  # None if snapshot not pushed
     action_items = fetch_open_action_items(r)
 
     # ── PDF Q&A generation for pre-read emails ──────────────────────────────
     # For each pre-read email with PDF attachments, select the main discussion
     # deck, download it, and generate Ian Ho–style predicted questions.
-    _run_pdf_qa(gmail_svc, emails, today_str, r)
+    _run_pdf_qa(token, emails, today_str, r)
 
     briefing_raw = generate_briefing(emails, events, today_str, window, seatalk_msgs, action_items)
     # Parse any new action items Claude found (from images or email text), save to Redis,

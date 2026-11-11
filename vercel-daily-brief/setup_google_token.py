@@ -10,7 +10,9 @@ Prerequisites:
        - Google Drive API
   4. Create OAuth 2.0 credentials → Desktop app.
   5. Download the JSON and save it as  client_secrets.json  in this directory.
-  6. Run:  python setup_google_token.py
+  6. Run:  pip install google-auth-oauthlib   (local only — not in requirements.txt,
+           so it isn't bundled into the Vercel functions)
+  7. Run:  python setup_google_token.py
 
 The script opens a browser tab. Sign in with shuning.wang@shopee.com and grant access.
 It then prints the three values you need to paste into Vercel's environment variables.
