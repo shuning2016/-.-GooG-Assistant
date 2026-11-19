@@ -34,10 +34,7 @@ from zoneinfo import ZoneInfo
 SGT = ZoneInfo("Asia/Singapore")
 RECIPIENT = "Shuning.wang@shopee.com"
 KEY_DOMAIN_GROUPS = "Swarm,OSP,SIP,FP&A,Budget,BPM"
-_DRIVE = os.path.expanduser(
-    "~/Library/CloudStorage/GoogleDrive-shuning2016@gmail.com"
-    "/My Drive/My Projects/Working Efficiency/use-seatalk"
-)
+_DRIVE = os.path.expanduser("~/My Projects/Working Efficiency/use-seatalk")
 
 # ─── SeaTalk Claude prompt ────────────────────────────────────────────────────
 

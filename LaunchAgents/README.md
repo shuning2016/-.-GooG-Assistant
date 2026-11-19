@@ -3,69 +3,78 @@
 Two macOS LaunchAgents schedule the SeaTalk integration scripts.
 Both require the Mac to be **on and awake** at the scheduled time.
 
+| Job | Schedule (SGT) | Runs | Output |
+|---|---|---|---|
+| `com.goog-assistant.seatalk-snapshot` | 07:50, 08:05 | `scripts/seatalk_snapshot.py --hours 24` | Redis key `seatalk-snapshot:YYYY-MM-DD` for the 8am Vercel brief |
+| `com.goog-assistant.seatalk-summary` | 10:00, 12:00, 15:00, 19:00 | `scripts/seatalk_summary_dispatch.sh` → `seatalk_summary.py` | Summary email to Shuning.wang@shopee.com |
+
+---
+
+## Source of truth — one copy only
+
+| What | Canonical location |
+|---|---|
+| Plists | this repo, `LaunchAgents/*.plist` (installed copies must be byte-identical) |
+| Job scripts | this repo, `scripts/` — the plists run them **in place** |
+| CDP reader | `~/My Projects/Working Efficiency/use-seatalk` (its own git repo), via `SEATALK_SKILL_ROOT` |
+| Interpreter | `/usr/local/bin/python3.11` |
+| Credentials | `~/.goog-assistant.env` |
+
+Do **not** copy scripts or use-seatalk anywhere else. In Nov 2026 stale copies under
+`~/.goog-assistant/scripts` and `~/.goog-assistant/use-seatalk` drifted from the repo and
+broke both jobs (summary passed `--output`, which the reader never supported; snapshot ran
+under a python with no `websocket-client`).
+
 ---
 
 ## Prerequisites
 
-1. **SeaTalk running with CDP debug port** (one-time setup):
-   ```bash
-   cd ~/Library/CloudStorage/.../use-seatalk
-   bash scripts/seatalk-restart-debug.sh
-   ```
-   Install the auto-debug LaunchAgent from use-seatalk so SeaTalk always restarts with debugging:
-   ```bash
-   cp scripts/com.seatalk.debug.plist ~/Library/LaunchAgents/
-   launchctl load ~/Library/LaunchAgents/com.seatalk.debug.plist
-   ```
+1. **SeaTalk running with the CDP debug port** — set up from the use-seatalk repo
+   (`scripts/seatalk-debug-autostart.sh` / `com.seatalk.debug.plist`). Not managed here.
 
-2. **Python dependencies** (installed for the user running the LaunchAgent):
+2. **Python dependencies for python3.11:**
    ```bash
-   pip3 install anthropic upstash-redis websocket-client markdown sendgrid
+   /usr/local/bin/python3.11 -m pip install anthropic upstash-redis websocket-client markdown
    ```
+   (`/usr/bin/python3` 3.9 lacks `anthropic`, so the jobs don't use it.)
 
 3. **Credentials** in `~/.goog-assistant.env`:
    ```bash
    ANTHROPIC_API_KEY=sk-ant-...
-   SENDGRID_API_KEY=SG....           # or SMTP_HOST/SMTP_USER/SMTP_PASS
-   FROM_EMAIL=assistant@example.com
+   SMTP_HOST=... SMTP_PORT=465 SMTP_USER=... SMTP_PASS=...   # or SENDGRID_API_KEY=SG....
    UPSTASH_REDIS_REST_URL=https://...
    UPSTASH_REDIS_REST_TOKEN=...
-   # Optional: override use-seatalk repo location
-   # SEATALK_SKILL_ROOT=/path/to/use-seatalk
+   SEATALK_SELF_ID=...
    ```
 
 ---
 
-## Install the LaunchAgents
+## Install / re-sync
 
 ```bash
-REPO="/Users/shuning.wang/Library/CloudStorage/GoogleDrive-shuning2016@gmail.com/My Drive/My Projects/Working Efficiency/GooG Assistant"
-
-# 1. Snapshot agent (07:50 SGT) — feeds the Vercel 8am briefing
-cp "$REPO/LaunchAgents/com.goog-assistant.seatalk-snapshot.plist" ~/Library/LaunchAgents/
-launchctl load ~/Library/LaunchAgents/com.goog-assistant.seatalk-snapshot.plist
-
-# 2. Summary agent (10:00 / 12:00 / 15:00 / 19:00 SGT) — emails SeaTalk summaries
-cp "$REPO/LaunchAgents/com.goog-assistant.seatalk-summary.plist" ~/Library/LaunchAgents/
-chmod +x "$REPO/scripts/seatalk_summary_dispatch.sh"
-launchctl load ~/Library/LaunchAgents/com.goog-assistant.seatalk-summary.plist
+bash scripts/install_launchagents.sh
 ```
 
-## Verify
+Copies both plists, reloads them (same jobs and schedules; nothing runs immediately), then
+runs the doctor. Re-run it after **any** plist change.
+
+## Check health
 
 ```bash
-launchctl list | grep goog-assistant
+python3 scripts/seatalk_doctor.py                       # exit 0 = healthy
+python3 -m unittest scripts/test_seatalk_doctor.py      # doctor's own tests
 ```
-Both entries should appear (exit code 0 after first fire = success).
 
-## Test a manual run
+The doctor checks: installed plists match the repo, every path exists, the interpreter has
+all modules, every flag the scripts pass is supported by the reader, the env file has the
+required keys, and warns about stale copies.
+
+## Manual run (same environment as launchd)
 
 ```bash
-# Test snapshot
-python3 "$REPO/scripts/seatalk_snapshot.py" --hours 1
-
-# Test summary (sends an email)
-python3 "$REPO/scripts/seatalk_summary.py" --hours 1
+launchctl kickstart -k gui/$(id -u)/com.goog-assistant.seatalk-snapshot
+launchctl kickstart -k gui/$(id -u)/com.goog-assistant.seatalk-summary   # sends an email
+launchctl print gui/$(id -u)/com.goog-assistant.seatalk-summary | grep "last exit code"
 ```
 
 ## Logs
@@ -80,7 +89,7 @@ python3 "$REPO/scripts/seatalk_summary.py" --hours 1
 ## Uninstall
 
 ```bash
-launchctl unload ~/Library/LaunchAgents/com.goog-assistant.seatalk-snapshot.plist
-launchctl unload ~/Library/LaunchAgents/com.goog-assistant.seatalk-summary.plist
-rm ~/Library/LaunchAgents/com.goog-assistant.seatalk-*.plist
+for l in com.goog-assistant.seatalk-snapshot com.goog-assistant.seatalk-summary; do
+  launchctl bootout gui/$(id -u)/$l; rm ~/Library/LaunchAgents/$l.plist
+done
 ```

@@ -7,10 +7,14 @@
   Runs seatalk_snapshot.py every morning at 07:50 SGT so the Redis snapshot
   is ready before the Vercel 8am cron fires.
 
-  Install:
-    cp LaunchAgents/com.goog-assistant.seatalk-snapshot.plist ~/Library/LaunchAgents/
-    # Edit WorkingDirectory below to match your actual repo path
-    launchctl load ~/Library/LaunchAgents/com.goog-assistant.seatalk-snapshot.plist
+  Source of truth: this repo. Do NOT copy scripts elsewhere (the old
+  ~/.goog-assistant/scripts and ~/.goog-assistant/use-seatalk copies drifted
+  and broke both jobs in Nov 2026). Install / re-sync with:
+    bash scripts/install_launchagents.sh
+  which copies this plist, reloads it, and runs scripts/seatalk_doctor.py.
+
+  Interpreter: /usr/local/bin/python3.11 — the only one with all deps
+  (websocket-client, anthropic, markdown, upstash-redis).
 
   Uninstall:
     launchctl unload ~/Library/LaunchAgents/com.goog-assistant.seatalk-snapshot.plist
@@ -27,7 +31,7 @@
 
   <key>ProgramArguments</key>
   <array>
-    <string>/usr/bin/python3</string>
+    <string>/usr/local/bin/python3.11</string>
     <string>/Users/shuning.wang/My Projects/Working Efficiency/GooG Assistant/scripts/seatalk_snapshot.py</string>
     <string>--hours</string>
     <string>24</string>
@@ -35,7 +39,9 @@
 
   <!-- Run at 07:50 SGT (pre-briefing) and again at 08:05 SGT as a fallback
        in case Chrome/SeaTalk was not yet open at 07:50.
-       Both runs write to the same Redis key so the later run just refreshes it. -->
+       Both runs write to the same Redis key so the later run just refreshes it.
+       The script itself retries CDP (3x, 30s apart) and Redis (4x, 15s apart)
+       to handle Chrome not yet open and post-sleep DNS delays. -->
   <key>StartCalendarInterval</key>
   <array>
     <dict>

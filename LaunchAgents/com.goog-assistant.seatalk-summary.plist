@@ -9,18 +9,23 @@
   via Claude, and emails it to Shuning.wang@shopee.com.
 
   Window mapping:
-    10:00 → --hours 3   (covers 07:00–10:00)
-    12:00 → --hours 2   (covers 10:00–12:00)
-    15:00 → --hours 3   (covers 12:00–15:00)
-    19:00 → --hours 4   (covers 15:00–19:00)
+    10:00 → 3 h window   (covers 07:00–10:00)
+    12:00 → 2 h window   (covers 10:00–12:00)
+    15:00 → 3 h window   (covers 12:00–15:00)
+    19:00 → 4 h window   (covers 15:00–19:00)
 
   Because a single plist can only pass one set of arguments, this uses a
-  wrapper script (seatalk_summary_dispatch.sh) that determines the correct
-  --hours value from the current time.
+  wrapper script (seatalk_summary_dispatch.sh) that picks the hours
+  argument from the current time.  (No double hyphens allowed in XML comments.)
 
-  Install:
-    cp LaunchAgents/com.goog-assistant.seatalk-summary.plist ~/Library/LaunchAgents/
-    launchctl load ~/Library/LaunchAgents/com.goog-assistant.seatalk-summary.plist
+  Source of truth: this repo. Do NOT copy scripts elsewhere (the old
+  ~/.goog-assistant/scripts and ~/.goog-assistant/use-seatalk copies drifted
+  and broke both jobs in Nov 2026). Install / re-sync with:
+    bash scripts/install_launchagents.sh
+  which copies this plist, reloads it, and runs scripts/seatalk_doctor.py.
+
+  Interpreter: /usr/local/bin/python3.11 — the only one with all deps
+  (websocket-client, anthropic, markdown, upstash-redis).
 
   Uninstall:
     launchctl unload ~/Library/LaunchAgents/com.goog-assistant.seatalk-summary.plist
@@ -38,7 +43,7 @@
   <key>ProgramArguments</key>
   <array>
     <string>/bin/bash</string>
-    <string>/Users/shuning.wang/.goog-assistant/scripts/seatalk_summary_dispatch.sh</string>
+    <string>/Users/shuning.wang/My Projects/Working Efficiency/GooG Assistant/scripts/seatalk_summary_dispatch.sh</string>
   </array>
 
   <!-- Fire at 10:00, 12:00, 15:00, 19:00 local time (SGT when Mac is in Asia/Singapore) -->
@@ -63,14 +68,14 @@
   </array>
 
   <key>WorkingDirectory</key>
-  <string>/Users/shuning.wang/.goog-assistant</string>
+  <string>/Users/shuning.wang/My Projects/Working Efficiency/GooG Assistant</string>
 
   <key>EnvironmentVariables</key>
   <dict>
     <key>PATH</key>
     <string>/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
     <key>SEATALK_SKILL_ROOT</key>
-    <string>/Users/shuning.wang/.goog-assistant/use-seatalk</string>
+    <string>/Users/shuning.wang/My Projects/Working Efficiency/use-seatalk</string>
   </dict>
 
   <key>StandardOutPath</key>

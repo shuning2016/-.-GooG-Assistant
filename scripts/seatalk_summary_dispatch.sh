@@ -32,5 +32,10 @@ case $HOUR in
     ;;
 esac
 
-echo "[seatalk_summary_dispatch] hour=$HOUR → python3 $SUMMARY_PY --hours $HOURS"
-exec /usr/bin/python3 "$SUMMARY_PY" --hours "$HOURS"
+# python3.11 is the only interpreter with every dependency the summary needs
+# (anthropic, markdown, upstash-redis, websocket-client for the CDP reader).
+# /usr/bin/python3 (3.9) lacks anthropic — see scripts/seatalk_doctor.py.
+PYTHON="${GOOG_PYTHON:-/usr/local/bin/python3.11}"
+
+echo "[seatalk_summary_dispatch] hour=$HOUR → $PYTHON $SUMMARY_PY --hours $HOURS"
+exec "$PYTHON" "$SUMMARY_PY" --hours "$HOURS"
