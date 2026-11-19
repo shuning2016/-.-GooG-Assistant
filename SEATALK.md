@@ -10,7 +10,7 @@ SeaTalk is an Electron app. Its messages live in an in-memory Redux store, acces
 DevTools Protocol (CDP). There is no public API.
 
 - **CDP reader**: `use-seatalk` skill at `$SEATALK_SKILL_ROOT`
-  - Default path: `~/Library/CloudStorage/.../My Projects/Working Efficiency/use-seatalk`
+  - Default path: `~/My Projects/Working Efficiency/use-seatalk` (the only copy — see `LaunchAgents/README.md`)
   - Set `SEATALK_SKILL_ROOT` env var to override
 - **SeaTalk must be running** with remote debugging enabled (port 19222)
   - Run `seatalk-restart-debug.sh` once to patch `app.asar` for Electron 30+; after that it

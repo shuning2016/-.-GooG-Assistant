@@ -101,20 +101,18 @@ def _try_run_snapshot(date_str: str) -> list[dict] | None:
     Returns the messages list if successful, None otherwise.
     Works when the app is running locally (vercel dev); no-ops on Vercel cloud.
     """
-    # Prefer the stable local copy that always has the latest script
-    local_script = os.path.expanduser("~/.goog-assistant/scripts/seatalk_snapshot.py")
-    script = local_script if os.path.exists(local_script) else os.path.abspath(_SNAPSHOT_SCRIPT)
+    # Always use the repo copy — the old ~/.goog-assistant copy drifted and was retired.
+    script = os.path.abspath(_SNAPSHOT_SCRIPT)
     if not os.path.exists(script):
         return None
 
     # Pass SEATALK_SKILL_ROOT so the script finds the CDP reader even when the
     # parent process doesn't have it in its environment.
     env = os.environ.copy()
-    drive = os.path.expanduser(
-        "~/Library/CloudStorage/GoogleDrive-shuning2016@gmail.com"
-        "/My Drive/My Projects/Working Efficiency/use-seatalk"
+    env.setdefault(
+        "SEATALK_SKILL_ROOT",
+        os.path.expanduser("~/My Projects/Working Efficiency/use-seatalk"),
     )
-    env.setdefault("SEATALK_SKILL_ROOT", drive)
 
     try:
         result = subprocess.run(
